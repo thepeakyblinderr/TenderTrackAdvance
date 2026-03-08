@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="theme-color" content="#07091280">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TenderTrack">
+<title>TenderTrack</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --mono:'IBM Plex Mono',monospace;--sans:'Inter',sans-serif;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
+}
+[data-theme="dark"]{
+  --bg:#060a12;--surface:#0d1420;--card:#111c2e;--card2:#162338;
+  --border:#1e3050;--border2:#254068;
+  --text:#f0f6ff;--dim:#6080a8;--muted:#0a1220;
+  --accent:#3b9eff;--accent2:#70bbff;--glow:rgba(59,158,255,.22);
+  --grad1:rgba(59,130,246,.14);--grad2:rgba(99,102,241,.07);--grad3:rgba(16,185,129,.05);
+}
+[data-theme="light"]{
+  --bg:#eef2f9;--surface:#ffffff;--card:#ffffff;--card2:#f4f7fd;
+  --border:#c8d8ee;--border2:#b0c4e0;
+  --text:#0a1a2e;--dim:#5070a0;--muted:#dde8f8;
+  --accent:#1a7dff;--accent2:#0056cc;--glow:rgba(26,125,255,.18);
+  --grad1:rgba(59,130,246,.07);--grad2:rgba(99,102,241,.04);--grad3:rgba(16,185,129,.03);
+}
+html,body{height:100%;}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
+  transition:background .2s,color .2s;
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% -10%,var(--grad1) 0%,transparent 60%),
+    radial-gradient(ellipse 50% 40% at 90% 90%,var(--grad2) 0%,transparent 55%),
+    radial-gradient(ellipse 30% 30% at 10% 60%,var(--grad3) 0%,transparent 50%);}
+
+/* HEADER */
+header{position:sticky;top:0;z-index:50;
+  backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
+  border-bottom:1px solid var(--border);padding:0 16px;padding-top:var(--safe-top);
+  transition:background .2s,border-color .2s,box-shadow .2s;}
+[data-theme="dark"] header{background:rgba(6,10,18,.9);box-shadow:0 1px 30px rgba(0,0,0,.6),0 1px 0 rgba(59,158,255,.08);}
+[data-theme="light"] header{background:rgba(238,242,249,.92);box-shadow:0 1px 16px rgba(0,0,0,.08);}
+.hdr{display:flex;align-items:center;height:56px;gap:8px;}
+.brand{display:flex;align-items:center;gap:9px;flex-shrink:0;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);letter-spacing:.3px;}
+.brand-pip{width:28px;height:28px;border-radius:9px;
+  background:linear-gradient(135deg,#1565e0,#3b9eff);
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  box-shadow:0 0 16px rgba(59,158,255,.5),inset 0 1px 0 rgba(255,255,255,.25);}
+.hdr-search{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border2);
+  border-radius:12px;padding:9px 14px;color:var(--text);font-family:var(--sans);font-size:14px;outline:none;-webkit-appearance:none;
+  transition:border-color .15s,box-shadow .15s,background .2s;}
+.hdr-search:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow);}
+.hdr-search::placeholder{color:var(--dim);}
+.btn-theme{width:34px;height:34px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);
+  cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;
+  transition:background .2s,border-color .2s;-webkit-appearance:none;}
+.btn-theme:active{transform:scale(.9);}
+.btn-emd{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border2);
+  border-radius:10px;padding:8px 11px;color:var(--dim);font-family:var(--sans);font-size:12px;font-weight:600;
+  cursor:pointer;white-space:nowrap;flex-shrink:0;text-decoration:none;transition:all .15s;}
+.btn-emd:hover{color:#34d399;border-color:rgba(52,211,153,.4);}
+
+/* Sync */
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--border2);transition:background .3s;}
+.sync-dot.ok{background:#34d399;box-shadow:0 0 6px #34d39977;}
+.sync-dot.err{background:#f87171;box-shadow:0 0 6px #f8717177;}
+.sync-dot.busy{background:#fbbf24;box-shadow:0 0 6px #fbbf2477;animation:pulse .8s infinite;}
+.btn-sync{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border2);
+  border-radius:10px;padding:8px 11px;color:var(--dim);font-family:var(--sans);font-size:12px;font-weight:500;
+  cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none;transition:border-color .15s,background .2s;}
+.btn-sync.ok{color:var(--accent);border-color:rgba(59,158,255,.4);}
+
+/* Today btn */
+.btn-today{position:relative;background:var(--surface);border:1px solid var(--border2);
+  border-radius:10px;padding:8px 13px;color:var(--dim);font-family:var(--sans);font-size:13px;font-weight:600;
+  cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none;transition:all .15s,background .2s;}
+.btn-today.lit{color:var(--accent);border-color:rgba(59,158,255,.5);box-shadow:0 0 14px rgba(59,158,255,.15);}
+.today-badge{position:absolute;top:-5px;right:-5px;background:var(--accent);color:#fff;
+  border-radius:10px;padding:1px 5px;font-size:9px;font-weight:700;border:2px solid var(--bg);line-height:1.4;display:none;}
+.btn-today.lit .today-badge{display:block;}
+
+.btn-add{background:linear-gradient(135deg,#1255cc,#3b9eff);border:1px solid rgba(59,158,255,.3);
+  border-radius:10px;padding:9px 15px;color:#fff;font-family:var(--sans);font-size:13px;font-weight:600;
+  cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none;
+  box-shadow:0 2px 16px rgba(139,92,246,.35);transition:box-shadow .15s;}
+
+/* MAIN */
+main{padding:16px;padding-bottom:calc(30px + var(--safe-bot));}
+
+/* STATS */
+.stats-row{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.stats-row::-webkit-scrollbar{display:none;}
+.stat-chip{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border2);
+  border-radius:12px;padding:9px 14px;font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap;flex-shrink:0;cursor:default;
+  transition:background .2s,border-color .2s;}
+.stat-chip b{color:var(--text);font-size:14px;}
+.stat-chip.btn{cursor:pointer;}
+
+/* BOARD */
+.board{display:flex;flex-direction:column;gap:2px;}
+.srow{border-radius:12px;padding:10px 12px;transition:background .15s,border-color .15s;}
+[data-theme="dark"] .srow.has-items{background:var(--surface);border:1px solid var(--border2);}
+[data-theme="light"] .srow.has-items{background:#fff;border:1px solid var(--border);box-shadow:0 1px 6px rgba(0,0,0,.06);}
+.srow.no-items{background:transparent;border:1px solid transparent;}
+.srow-label{display:flex;align-items:center;gap:9px;padding-bottom:8px;}
+.srow.no-items .srow-label{padding-bottom:0;}
+.srow-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.srow-name{font-family:var(--mono);font-size:11px;font-weight:500;line-height:1.3;color:var(--dim);flex:1;}
+[data-theme="dark"] .srow.has-items .srow-name{color:#90c8ff;}
+[data-theme="light"] .srow.has-items .srow-name{color:#0e3a80;font-weight:600;}
+.srow-cnt{font-family:var(--mono);font-size:10px;font-weight:700;border-radius:20px;padding:2px 9px;color:var(--dim);flex-shrink:0;background:var(--muted);}
+[data-theme="dark"] .srow.has-items .srow-cnt{background:rgba(59,158,255,.15);border:1px solid rgba(59,158,255,.35);color:#70bbff;}
+[data-theme="light"] .srow.has-items .srow-cnt{background:rgba(26,125,255,.12);border:1px solid rgba(26,125,255,.3);color:#1a5ec0;}
+.srow-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 2px;}
+
+/* CHIP */
+[data-theme="dark"] .tchip{display:inline-flex;align-items:center;gap:6px;
+  background:#0e1e34;border:1px solid #1e3a5a;
+  border-radius:10px 0 0 10px;padding:7px 13px;min-height:36px;cursor:pointer;
+  font-family:var(--mono);font-size:12px;font-weight:500;color:#90c8ff;
+  box-shadow:0 2px 8px rgba(0,0,0,.4);transition:all .15s;}
+[data-theme="light"] .tchip{display:inline-flex;align-items:center;gap:6px;
+  background:#fff;border:1px solid #a8bcd8;
+  border-radius:10px 0 0 10px;padding:7px 13px;min-height:36px;cursor:pointer;
+  font-family:var(--mono);font-size:12px;font-weight:600;color:#0d2a50;
+  box-shadow:0 2px 6px rgba(0,0,0,.09);transition:all .15s;}
+.tchip-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+[data-theme="dark"] .tchip.p-high{background:linear-gradient(135deg,rgba(185,28,28,.25),rgba(239,68,68,.12));border-color:rgba(239,68,68,.5);color:#fca5a5;}
+[data-theme="light"] .tchip.p-high{background:linear-gradient(135deg,#fff5f5,#fff);border-color:rgba(220,32,32,.4);color:#b91c1c;}
+.srow.no-items .srow-chips{display:none;}
+@media(min-width:600px){
+  .board{gap:3px;}
+  .srow{display:grid;grid-template-columns:220px 1fr;align-items:flex-start;}
+  .srow.has-items .srow-label{border-right:1px solid var(--border);padding:4px 16px 4px 4px;margin-bottom:0;align-self:stretch;align-items:center;}
+  .srow.no-items .srow-label{padding:4px;}
+  .srow-chips{padding:7px 16px;align-items:center;min-height:44px;}
+  .srow.no-items .srow-chips{display:flex;}
+  .srow.no-items .srow-chips::after{content:'—';font-size:11px;color:var(--border2);font-family:var(--mono);}
+  [data-theme="dark"] .tchip:hover{background:#162840;border-color:rgba(59,158,255,.5);color:var(--accent2);}
+  [data-theme="light"] .tchip:hover{background:#eef6ff;border-color:rgba(26,125,255,.5);color:#1a5ec0;}
+  [data-theme="dark"] .tchip.p-high:hover{border-color:rgba(239,68,68,.7);color:#fecaca;}
+  [data-theme="light"] .tchip.p-high:hover{border-color:rgba(220,32,32,.6);color:#991b1b;}
+}
+[data-theme="dark"] .tchip-fu{display:inline-flex;align-items:center;justify-content:center;
+  background:#0a1628;border:1px solid #1e3a5a;border-left:none;
+  border-radius:0 10px 10px 0;padding:0 9px;height:36px;min-width:30px;cursor:pointer;
+  font-size:11px;font-family:var(--mono);font-weight:600;
+  color:var(--dim);flex-shrink:0;transition:all .15s;white-space:nowrap;}
+[data-theme="light"] .tchip-fu{display:inline-flex;align-items:center;justify-content:center;
+  background:#f0f6ff;border:1px solid #b8cce0;border-left:none;
+  border-radius:0 10px 10px 0;padding:0 9px;height:36px;min-width:30px;cursor:pointer;
+  font-size:11px;font-family:var(--mono);font-weight:600;
+  color:var(--dim);flex-shrink:0;transition:all .15s;white-space:nowrap;}
+[data-theme="dark"] .tchip-fu:active,[data-theme="dark"] .tchip-fu:hover{background:rgba(59,158,255,.12);color:var(--accent2);}
+[data-theme="light"] .tchip-fu:active,[data-theme="light"] .tchip-fu:hover{background:#ddeeff;color:#1a5ec0;}
+.tchip-fu.fu-due{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.35);color:#f87171;}
+
+.board-empty{text-align:center;padding:70px 20px;color:var(--dim);}
+.board-empty-icon{font-size:40px;margin-bottom:12px;opacity:.25;}
+.board-empty-title{font-size:17px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.board-empty-sub{font-size:13px;}
+
+/* OVERLAY + MODAL */
+.overlay{position:fixed;inset:0;z-index:100;background:rgba(5,3,12,.85);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  display:flex;align-items:flex-end;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .2s;}
+.overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--card);border:1px solid var(--border2);
+  border-top:1px solid rgba(59,158,255,.15);
+  border-radius:22px 22px 0 0;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;
+  padding:20px 18px;padding-bottom:calc(20px + var(--safe-bot));
+  transform:translateY(100%);transition:transform .3s cubic-bezier(.32,1,.32,1);
+  box-shadow:0 -16px 60px rgba(0,0,0,.7),0 -1px 0 rgba(59,158,255,.1);}
+.overlay.open .modal{transform:translateY(0);}
+.modal::-webkit-scrollbar{width:0;}
+.modal::before{content:'';display:block;width:40px;height:4px;border-radius:2px;
+  background:var(--border2);margin:0 auto 20px;}
+.mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.mt{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);letter-spacing:.2px;}
+.xbtn{background:var(--card2);border:1px solid var(--border2);border-radius:8px;width:32px;height:32px;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--dim);font-size:18px;flex-shrink:0;
+  transition:background .15s;}
+.xbtn:hover{background:var(--border2);}
+
+/* FORM */
+.frow{margin-bottom:14px;}
+.fl{font-size:10px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--dim);font-family:var(--mono);display:block;margin-bottom:6px;}
+.fi{background:var(--surface);border:1px solid var(--border2);border-radius:11px;padding:11px 13px;
+  color:var(--text);font-family:var(--sans);font-size:15px;outline:none;width:100%;-webkit-appearance:none;
+  transition:border-color .15s,box-shadow .15s;}
+.fi:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow);}
+.fi::placeholder{color:var(--dim);}
+input[type="date"].fi{color-scheme:dark;}
+select.fi{appearance:none;-webkit-appearance:none;}
+textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
+.fgrid .frow{margin-bottom:0;}
+@media(max-width:380px){.fgrid{grid-template-columns:1fr;}}
+.fsec{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);
+  font-family:var(--mono);padding:12px 0 8px;border-top:1px solid var(--border);}
+
+/* PRIORITY TOGGLE */
+.pri-toggle{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border2);
+  border-radius:11px;padding:12px 14px;cursor:pointer;user-select:none;transition:all .15s;}
+.pri-toggle.on{background:rgba(185,28,28,.12);border-color:rgba(239,68,68,.45);}
+.pri-icon{font-size:16px;}
+.pri-label{font-size:13px;font-weight:500;flex:1;color:var(--dim);}
+.pri-toggle.on .pri-label{color:#fca5a5;}
+.pri-check{width:22px;height:22px;border-radius:6px;border:1px solid var(--border2);background:var(--muted);
+  display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;color:transparent;}
+.pri-toggle.on .pri-check{background:#dc2626;border-color:#ef4444;color:#fff;}
+
+/* REMOVE CHIPS */
+.rbox{background:rgba(185,28,28,.07);border:1px solid rgba(239,68,68,.2);border-radius:11px;padding:12px;margin-bottom:14px;}
+.rbox-t{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:#f87171;font-family:var(--mono);margin-bottom:8px;}
+.chips{display:flex;flex-wrap:wrap;gap:6px;}
+.chip{display:flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:5px 10px;}
+.chip-l{font-size:12px;color:var(--dim);}
+.chip-x{background:none;border:none;color:#f87171;cursor:pointer;font-size:18px;line-height:1;padding:0;display:flex;align-items:center;}
+
+/* BUTTONS */
+.mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
+.btn-c{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:10px 18px;
+  color:var(--dim);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;-webkit-appearance:none;transition:background .15s;}
+.btn-s{background:linear-gradient(135deg,#1255cc,#3b9eff);border:1px solid rgba(59,158,255,.3);border-radius:10px;
+  padding:10px 22px;color:#fff;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;-webkit-appearance:none;
+  box-shadow:0 2px 16px rgba(139,92,246,.3);}
+.btn-del{background:linear-gradient(135deg,#991b1b,#dc2626);border:1px solid rgba(239,68,68,.4);border-radius:10px;
+  padding:10px 20px;color:#fff;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;-webkit-appearance:none;}
+.btn-push{background:linear-gradient(135deg,#065f46,#059669);border:1px solid rgba(5,150,105,.4);border-radius:10px;
+  padding:10px 16px;color:#fff;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;flex:1;-webkit-appearance:none;}
+.btn-pull{background:linear-gradient(135deg,#0e4db0,#3b9eff);border:1px solid rgba(59,158,255,.4);border-radius:10px;
+  padding:10px 16px;color:#fff;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;flex:1;-webkit-appearance:none;}
+
+/* DETAIL */
+.detail-no{font-family:var(--mono);font-size:19px;font-weight:600;
+  background:linear-gradient(90deg,#70bbff,#3b9eff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:10px;}
+.detail-stages{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.detail-sec{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);
+  font-family:var(--mono);padding:10px 0 8px;border-top:1px solid var(--border);}
+.detail-dates{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;}
+.dd-l{font-size:10px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;color:var(--dim);font-family:var(--mono);margin-bottom:2px;}
+.dd-v{font-size:12px;font-family:var(--mono);color:var(--text);}
+[data-theme="dark"] .dd-v.warn{color:#fbbf24;}
+[data-theme="light"] .dd-v.warn{color:#b45309;}
+[data-theme="dark"] .dd-v.danger{color:#f87171;}
+[data-theme="light"] .dd-v.danger{color:#dc2020;}
+.detail-notes{background:var(--surface);border:1px solid var(--border2);border-radius:11px;padding:12px;font-size:13px;line-height:1.6;}
+
+/* ACTIONS */
+.actions-date{font-size:11px;font-family:var(--mono);color:var(--dim);margin-bottom:18px;text-align:center;letter-spacing:.3px;}
+.ag{margin-bottom:20px;}
+.ag:last-child{margin-bottom:0;}
+.ag-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;}
+.ag-title{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;font-family:var(--mono);flex:1;}
+.ag-count{font-size:10px;font-family:var(--mono);font-weight:700;border-radius:20px;padding:2px 8px;}
+
+/* TODAY — red */
+.ag.s-today .ag-title{color:#e03030;}
+.ag.s-today .ag-count{background:rgba(220,48,48,.14);color:#c41c1c;}
+.ag.s-today .ag-header{border-bottom:1px solid rgba(220,48,48,.25);padding-bottom:8px;}
+.ag.s-today .ai{background:rgba(220,48,48,.06);border-color:rgba(220,48,48,.25);}
+[data-theme="dark"] .ag.s-today .ag-title{color:#f87171;}
+[data-theme="dark"] .ag.s-today .ag-count{background:rgba(239,68,68,.18);color:#f87171;}
+[data-theme="dark"] .ag.s-today .ai{background:rgba(185,28,28,.1);border-color:rgba(239,68,68,.3);}
+.ag.s-today .ai-msg{color:#b91c1c;}
+[data-theme="dark"] .ag.s-today .ai-msg{color:#fecaca;}
+
+/* WEEK — amber */
+.ag.s-week .ag-title{color:#b45309;}
+.ag.s-week .ag-count{background:rgba(180,83,9,.13);color:#92400e;}
+.ag.s-week .ag-header{border-bottom:1px solid rgba(180,83,9,.2);padding-bottom:8px;}
+.ag.s-week .ai{background:rgba(180,83,9,.06);border-color:rgba(180,83,9,.2);}
+[data-theme="dark"] .ag.s-week .ag-title{color:#fbbf24;}
+[data-theme="dark"] .ag.s-week .ag-count{background:rgba(251,191,36,.15);color:#fbbf24;}
+[data-theme="dark"] .ag.s-week .ag-header{border-bottom:1px solid rgba(251,191,36,.2);}
+[data-theme="dark"] .ag.s-week .ai{background:rgba(120,80,0,.1);border-color:rgba(251,191,36,.22);}
+.ag.s-week .ai-msg{color:#92400e;}
+[data-theme="dark"] .ag.s-week .ai-msg{color:#fde68a;}
+
+/* SOON — blue */
+.ag.s-soon .ag-title{color:#1a6fd4;}
+.ag.s-soon .ag-count{background:rgba(26,125,255,.12);color:#1255a0;}
+.ag.s-soon .ag-header{border-bottom:1px solid rgba(26,125,255,.2);padding-bottom:8px;}
+.ag.s-soon .ai{background:rgba(26,125,255,.05);border-color:rgba(26,125,255,.18);}
+[data-theme="dark"] .ag.s-soon .ag-title{color:var(--accent2);}
+[data-theme="dark"] .ag.s-soon .ag-count{background:rgba(59,158,255,.15);color:var(--accent2);}
+[data-theme="dark"] .ag.s-soon .ai{background:rgba(59,158,255,.06);border-color:rgba(59,158,255,.2);}
+.ag.s-soon .ai-msg{color:#1255a0;}
+[data-theme="dark"] .ag.s-soon .ai-msg{color:#90c8ff;}
+
+/* FOLLOWUP — muted */
+.ag.s-followup .ag-title{color:var(--dim);}
+.ag.s-followup .ag-count{background:var(--muted);color:var(--dim);}
+.ag.s-followup .ag-header{border-bottom:1px solid var(--border);padding-bottom:8px;}
+.ag.s-followup .ai{background:var(--surface);border-color:var(--border2);}
+.ag.s-followup .ai-msg{color:var(--text);}
+
+.ai{display:flex;align-items:flex-start;gap:10px;border:1px solid;
+  border-radius:12px;padding:12px 14px;margin-bottom:7px;}
+.ai:last-child{margin-bottom:0;}
+.ai-icon{font-size:15px;flex-shrink:0;margin-top:1px;}
+.ai-body{flex:1;min-width:0;cursor:pointer;}
+.ai-tender{font-family:var(--mono);font-size:12px;font-weight:700;margin-bottom:3px;}
+[data-theme="dark"] .ai-tender{color:var(--accent2);}
+[data-theme="light"] .ai-tender{color:#1a4a90;}
+.ai-msg{font-size:13px;font-weight:600;line-height:1.4;}
+.ai-sub{font-size:11px;color:var(--dim);margin-top:3px;font-family:var(--mono);}
+.snooze-btn{flex-shrink:0;background:var(--muted);border:1px solid var(--border2);border-radius:8px;
+  padding:5px 10px;color:var(--dim);font-size:11px;font-family:var(--sans);cursor:pointer;white-space:nowrap;align-self:center;}
+.ai-arrow{color:var(--dim);font-size:18px;font-weight:300;flex-shrink:0;align-self:center;cursor:pointer;line-height:1;}
+.no-actions{text-align:center;padding:40px 20px;}
+.no-actions-icon{font-size:36px;margin-bottom:10px;opacity:.25;}
+.no-actions-title{font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.no-actions-sub{font-size:13px;color:var(--dim);}
+
+/* SYNC */
+.sync-step{display:flex;gap:12px;align-items:flex-start;margin-bottom:16px;}
+.sync-step-num{width:24px;height:24px;border-radius:50%;flex-shrink:0;
+  background:rgba(59,158,255,.12);border:1px solid rgba(59,158,255,.28);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--accent2);font-family:var(--mono);margin-top:1px;}
+.sync-step-body{flex:1;}
+.sync-step-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.sync-step-desc{font-size:12px;color:var(--dim);line-height:1.5;}
+.sync-step-desc a{color:var(--accent);text-decoration:none;}
+.sync-code{background:var(--muted);border:1px solid var(--border2);border-radius:9px;padding:10px 12px;margin-top:8px;
+  font-family:var(--mono);font-size:10px;color:#90c8ff;line-height:1.6;overflow-x:auto;white-space:pre;cursor:pointer;position:relative;}
+.sync-code::after{content:'tap to copy';position:absolute;top:7px;right:8px;font-size:9px;color:var(--dim);font-family:var(--sans);}
+.sync-bar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border2);
+  border-radius:11px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--dim);font-family:var(--mono);}
+.sync-bar b{color:var(--text);}
+.sync-acts{display:flex;gap:8px;margin-bottom:14px;}
+.sync-warn{font-size:11px;color:#fbbf24;background:rgba(100,60,0,.1);border:1px solid rgba(251,191,36,.18);border-radius:9px;padding:8px 12px;margin-top:10px;line-height:1.5;}
+
+/* DEL */
+.del-q{font-size:15px;font-weight:500;margin-bottom:4px;}
+.del-sub{font-size:13px;color:var(--dim);}
+
+/* TOAST */
+.toast{position:fixed;bottom:calc(20px + var(--safe-bot));left:50%;
+  transform:translateX(-50%) translateY(60px);
+  background:var(--card2);border:1px solid var(--border2);border-radius:12px;padding:10px 18px;
+  font-size:13px;display:flex;align-items:center;gap:6px;z-index:200;
+  opacity:0;transition:all .22s;white-space:nowrap;pointer-events:none;
+  box-shadow:0 4px 30px rgba(0,0,0,.6),0 0 0 1px rgba(59,158,255,.08);}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+.hidden{display:none!important;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr">
+    <div class="brand"><div class="brand-pip">📋</div>TenderTrack</div>
+    <input class="hdr-search" id="search" placeholder="Search…" oninput="render()">
+    <button class="btn-theme" id="btn-theme" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+    <a class="btn-emd" href="emd.html" title="EMD Tracker">💰 EMD</a>
+    <button class="btn-sync" id="btn-sync" onclick="openSync()">
+      <span class="sync-dot" id="sync-dot"></span>Sync
+    </button>
+    <button class="btn-today" id="btn-today" onclick="openActions()">
+      Today<span class="today-badge" id="today-badge">0</span>
+    </button>
+    <button class="btn-add" onclick="openAdd()">+ Add</button>
+  </div>
+</header>
+
+<main>
+  <div class="stats-row">
+    <div class="stat-chip"><b id="s-total">0</b>&nbsp;Tenders</div>
+    <div class="stat-chip"><b id="s-stages">0</b>&nbsp;Active</div>
+    <div class="stat-chip hidden" id="s-expiry-chip"><b id="s-expiry" style="color:#f87171">0</b>&nbsp;Expiring</div>
+    <div class="stat-chip btn" id="pf-all"  onclick="setPF('')"    style="border-color:rgba(77,159,255,.4);color:var(--accent2)">All</div>
+    <div class="stat-chip btn" id="pf-high" onclick="setPF('high')">🔴&nbsp;High</div>
+  </div>
+  <div class="board" id="board"></div>
+</main>
+
+<!-- ADD/EDIT -->
+<div class="overlay" id="modal-add">
+  <div class="modal">
+    <div class="mh">
+      <div class="mt" id="modal-title">Add Tender</div>
+      <button class="xbtn" onclick="closeM('modal-add')">×</button>
+    </div>
+    <div class="frow"><label class="fl">Tender No *</label>
+      <input class="fi" id="f-no" placeholder="e.g. TND/2024/001" autocomplete="off"></div>
+    <div class="frow"><label class="fl">Stage *</label>
+      <select class="fi" id="f-stage"></select></div>
+    <div class="frow"><label class="fl">Priority</label>
+      <div class="pri-toggle" id="pri-toggle" onclick="togglePri()">
+        <span class="pri-icon">🔴</span>
+        <span class="pri-label">Mark as High Priority</span>
+        <span class="pri-check" id="pri-check"></span>
+      </div>
+    </div>
+    <div class="frow"><label class="fl">Notes</label>
+      <textarea class="fi" id="f-notes" placeholder="Any remarks…"></textarea></div>
+    <div class="fsec">EMD</div>
+    <div class="frow"><label class="fl">EMD Amount (₹)</label>
+      <input type="number" class="fi" id="f-emd" placeholder="e.g. 50000" inputmode="numeric"></div>
+    <div class="fsec">Key Dates</div>
+    <div class="fgrid">
+      <div class="frow"><label class="fl">Sale End</label><input type="date" class="fi" id="f-sale-end"></div>
+      <div class="frow"><label class="fl">Tech Bid Opening</label><input type="date" class="fi" id="f-tech-bid"></div>
+      <div class="frow"><label class="fl">Price Bid Opening</label><input type="date" class="fi" id="f-price-bid"></div>
+      <div class="frow"><label class="fl">Reverse Auction</label><input type="date" class="fi" id="f-ra"></div>
+      <div class="frow"><label class="fl">Bid Validity Expiry</label><input type="date" class="fi" id="f-validity"></div>
+      <div class="frow"><label class="fl">TCQ End Date</label><input type="date" class="fi" id="f-tcq"></div>
+    </div>
+    <div id="rbox" class="rbox hidden">
+      <div class="rbox-t">Remove a stage</div>
+      <div class="chips" id="stage-chips"></div>
+    </div>
+    <div class="mfoot">
+      <button class="btn-c" onclick="closeM('modal-add')">Cancel</button>
+      <button class="btn-s" onclick="saveTender()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div class="overlay" id="modal-detail">
+  <div class="modal">
+    <div class="mh">
+      <div class="mt">Tender Details</div>
+      <button class="xbtn" onclick="closeM('modal-detail')">×</button>
+    </div>
+    <div id="detail-body"></div>
+    <div class="mfoot">
+      <button class="btn-del" id="btn-del-d" style="margin-right:auto">Delete</button>
+      <button class="btn-c" id="btn-followup-d">🔔 Follow-up</button>
+      <button class="btn-c" onclick="closeM('modal-detail')">Close</button>
+      <button class="btn-s" id="btn-edit-d">Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- TODAY'S ACTIONS -->
+<div class="overlay" id="modal-actions">
+  <div class="modal">
+    <div class="mh">
+      <div class="mt">📅 Today's Actions</div>
+      <button class="xbtn" onclick="closeM('modal-actions')">×</button>
+    </div>
+    <div id="actions-body"></div>
+  </div>
+</div>
+
+<!-- SYNC -->
+<div class="overlay" id="modal-sync">
+  <div class="modal">
+    <div class="mh">
+      <div class="mt">☁️ Google Sheets Sync</div>
+      <button class="xbtn" onclick="closeM('modal-sync')">×</button>
+    </div>
+    <div id="sync-body"></div>
+  </div>
+</div>
+
+<!-- DELETE -->
+<div class="overlay" id="modal-del">
+  <div class="modal" style="max-width:400px">
+    <div class="mh">
+      <div class="mt">Delete Tender</div>
+      <button class="xbtn" onclick="closeM('modal-del')">×</button>
+    </div>
+    <p class="del-q" id="del-q">Delete this tender?</p>
+    <p class="del-sub">This cannot be undone.</p>
+    <div class="mfoot">
+      <button class="btn-c" onclick="closeM('modal-del')">Cancel</button>
+      <button class="btn-del" id="del-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- FOLLOW-UP -->
+<div class="overlay" id="modal-fu">
+  <div class="modal" style="max-width:420px">
+    <div class="mh">
+      <div class="mt">🔔 Set Follow-Up Reminder</div>
+      <button class="xbtn" onclick="closeM('modal-fu')">&#215;</button>
+    </div>
+    <div id="fu-tender-name" style="font-family:var(--mono);font-size:13px;color:var(--accent2);margin-bottom:14px;"></div>
+    <div id="fu-current-info"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <span style="font-size:13px;color:var(--dim);flex:1">Remind me in</span>
+      <input type="number" id="fu-days" min="1" max="365" value="3"
+        style="width:64px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;
+        padding:9px 10px;color:var(--text);font-family:var(--mono);font-size:15px;text-align:center;outline:none;-webkit-appearance:none;">
+      <span style="font-size:13px;color:var(--dim)">days</span>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+      <div onclick="setFuDays(1)" style="background:var(--muted);border:1px solid var(--border2);border-radius:7px;padding:7px 16px;font-size:13px;font-family:var(--mono);font-weight:600;color:var(--dim);cursor:pointer;">1d</div>
+      <div onclick="setFuDays(2)" style="background:var(--muted);border:1px solid var(--border2);border-radius:7px;padding:7px 16px;font-size:13px;font-family:var(--mono);font-weight:600;color:var(--dim);cursor:pointer;">2d</div>
+      <div onclick="setFuDays(3)" style="background:var(--muted);border:1px solid var(--border2);border-radius:7px;padding:7px 16px;font-size:13px;font-family:var(--mono);font-weight:600;color:var(--dim);cursor:pointer;">3d</div>
+    </div>
+    <div class="mfoot">
+      <button class="btn-c" id="fu-clear-btn" onclick="clearFollowUp()" style="margin-right:auto;color:#f87171;border-color:rgba(239,68,68,.3);display:none">Clear</button>
+      <button class="btn-c" onclick="closeM('modal-fu')">Cancel</button>
+      <button class="btn-s" onclick="saveFollowUp()">Set Reminder</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── THEME ─────────────────────────────────────────────
+(function(){
+  const saved = localStorage.getItem('tt_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
+  const btn = document.getElementById('btn-theme');
+  if(btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
+})();
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('tt_theme', next);
+  const btn = document.getElementById('btn-theme');
+  if(btn) btn.textContent = next === 'dark' ? '🌙' : '☀️';
+}
+
+// ── DATA ──────────────────────────────────────────────
+const STAGES = [
+  {id:19, label:'Under Preparation',           color:'#7dd3fc'},
+  {id:0,  label:'Sale End Awaited',            color:'#94a3b8'},
+  {id:1,  label:'Technical Bid Opening',       color:'#60a5fa'},
+  {id:2,  label:'Tech Bid Analysis Awaited',   color:'#93c5fd'},
+  {id:3,  label:'TBA and CBA at My End',       color:'#38bdf8'},
+  {id:22, label:'Under TCQ',                  color:'#fb923c'},
+  {id:4,  label:'Commercial Checking Awaited', color:'#c084fc'},
+  {id:5,  label:'AF Approval Pending',         color:'#fbbf24'},
+  {id:6,  label:'Price Bid Opening Proposal',  color:'#fb923c'},
+  {id:7,  label:'Price Opening Date Set',      color:'#f472b6'},
+  {id:8,  label:'Reverse Auction Date Set',    color:'#34d399'},
+  {id:9,  label:'Under CS Checking',           color:'#2dd4bf'},
+  {id:10, label:'Reasonability / Workability', color:'#f87171'},
+  {id:11, label:'Under Negotiation Approval',  color:'#fde68a'},
+  {id:12, label:'Under WO Verification',       color:'#86efac'},
+  {id:13, label:'Under Price Matching',        color:'#e879f9'},
+  {id:14, label:'Proposal for Award',          color:'#fb7185'},
+  {id:16, label:'AOC Pending',                 color:'#3b9eff'},
+  {id:17, label:'Agreement Pending',           color:'#6ee7b7'},
+  {id:20, label:'Under Tender Cancellation',   color:'#f97316'},
+  {id:21, label:'SAP Release Pending',         color:'#fde68a'},
+  {id:18, label:'Others',                      color:'#475569'},
+];
+
+const KEY = 'tt_v11';
+const SNOOZE_KEY = 'tt_snooze';
+const SYNC_KEY = 'tt_sync_url';
+const FU_KEY = 'tt_followup';
+
+let tenders = [];
+let editId = null;
+let fuId = null;
+let pFilter = '';
+let syncUrl = localStorage.getItem(SYNC_KEY) || '';
+
+// ── HELPERS ───────────────────────────────────────────
+function sg(id){ return STAGES.find(s => s.id === id) || STAGES[0]; }
+function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
+
+function fmt(d){
+  if(!d) return null;
+  const p = d.split('-');
+  if(p.length !== 3) return null;
+  const dt = new Date(+p[0], +p[1]-1, +p[2]);
+  return isNaN(dt) ? null : dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
+}
+
+// Parse YYYY-MM-DD as local date — avoids UTC timezone offset bug
+function daysLeft(d){
+  if(!d) return null;
+  const p = d.split('-');
+  if(p.length !== 3) return null;
+  const dt = new Date(+p[0], +p[1]-1, +p[2]);
+  if(isNaN(dt)) return null;
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.round((dt - now) / 86400000);
+}
+
+// ── STAGE AGE ────────────────────────────────────────
+function stageAge(t, sid){
+  if(!t.stageEnteredAt || !t.stageEnteredAt[sid]) return null;
+  const now = new Date(); now.setHours(0,0,0,0);
+  return Math.round((now.getTime() - t.stageEnteredAt[sid]) / 86400000);
+}
+
+// ── FOLLOW-UP ─────────────────────────────────────────
+function getFU(){ try{ return JSON.parse(localStorage.getItem(FU_KEY)||'{}'); }catch(e){ return {}; } }
+function saveFU(obj){ localStorage.setItem(FU_KEY, JSON.stringify(obj)); }
+
+function getFUFor(tid){
+  const fu = getFU();
+  return fu[tid] || null;
+}
+
+function openFollowUp(tid){
+  const t = tenders.find(function(x){ return x.id===tid; });
+  if(!t) return;
+  fuId = tid;
+  document.getElementById('fu-tender-name').textContent = t.no;
+  const existing = getFUFor(tid);
+  const infoEl   = document.getElementById('fu-current-info');
+  const clearBtn = document.getElementById('fu-clear-btn');
+  if(existing){
+    const due  = new Date(existing.until);
+    const dStr = due.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
+    const todayMs = (function(){ const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
+    const dL   = Math.round((existing.until - todayMs) / 86400000);
+    const dLText = dL > 0 ? ' (in '+dL+'d)' : dL === 0 ? ' <span style="color:#fbbf24">due today</span>' : ' <span style="color:#f87171">overdue by '+Math.abs(dL)+'d</span>';
+    infoEl.innerHTML = '<div style="font-size:12px;color:var(--dim);font-family:var(--mono);'+
+      'background:var(--surface);border:1px solid var(--border2);border-radius:8px;padding:9px 12px;margin-bottom:12px">'+
+      'Reminder set: <b style="color:var(--accent2)">'+dStr+'</b>'+dLText+'</div>';
+    clearBtn.style.display = 'flex';
+  } else {
+    infoEl.innerHTML = '';
+    clearBtn.style.display = 'none';
+  }
+  document.getElementById('fu-days').value = existing ? existing.days : 3;
+  openM('modal-fu');
+}
+
+function setFuDays(n){
+  document.getElementById('fu-days').value = n;
+}
+
+function saveFollowUp(){
+  if(!fuId) return;
+  const days = parseInt(document.getElementById('fu-days').value) || 3;
+  if(days < 1){ toast('Enter at least 1 day', true); return; }
+  const fu = getFU();
+  const until = new Date(); until.setHours(0,0,0,0); until.setDate(until.getDate() + days);
+  fu[fuId] = {until: until.getTime(), days: days, setOn: Date.now()};
+  saveFU(fu);
+  const dueStr = until.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+  toast('Follow-up set — due '+dueStr+' ('+days+'d) ✓');
+  closeM('modal-fu');
+  render(); refreshBadge();
+  // Rebuild actions modal if it's already open
+  const ma = document.getElementById('modal-actions');
+  if(ma && ma.classList.contains('open')) buildActionsModal();
+}
+
+function clearFollowUp(){
+  if(!fuId) return;
+  const fu = getFU();
+  delete fu[fuId];
+  saveFU(fu);
+  toast('Reminder cleared');
+  closeM('modal-fu');
+  render(); refreshBadge();
+  const ma = document.getElementById('modal-actions');
+  if(ma && ma.classList.contains('open')) buildActionsModal();
+}
+
+// ── STORAGE ───────────────────────────────────────────
+function load(){
+  try {
+    // Migrate from v9 if v10 is empty
+    let raw = localStorage.getItem(KEY);
+    if(!raw) {
+      const old = localStorage.getItem('tt_v10') || localStorage.getItem('tt_v9');
+      if(old) raw = old;
+    }
+    tenders = JSON.parse(raw || '[]');
+    // Migration: remove stage 15 (Bid Validity Expiring Soon — now redundant)
+    tenders.forEach(function(t){
+      if(t.stages && t.stages.includes(15)){
+        t.stages = t.stages.filter(function(s){ return s !== 15; });
+        if(t.stageEnteredAt) delete t.stageEnteredAt[15];
+      }
+    });
+  } catch(e) { tenders = []; }
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(tenders)); }
+
+// ── SNOOZE ────────────────────────────────────────────
+function getSnoozes(){ try{ return JSON.parse(localStorage.getItem(SNOOZE_KEY)||'{}'); }catch(e){ return {}; } }
+
+function isSnoozed(snoozeKey){
+  const s = getSnoozes();
+  const until = s[snoozeKey];
+  if(!until) return false;
+  const todayMs = (function(){ const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
+  if(todayMs >= until){
+    delete s[snoozeKey];
+    localStorage.setItem(SNOOZE_KEY, JSON.stringify(s));
+    return false;
+  }
+  return true;
+}
+
+function snoozeItem(snoozeKey){
+  const s = getSnoozes();
+  const until = new Date(); until.setHours(0,0,0,0); until.setDate(until.getDate()+3);
+  s[snoozeKey] = until.getTime();
+  localStorage.setItem(SNOOZE_KEY, JSON.stringify(s));
+  toast('Snoozed for 3 days ✓');
+  refreshBadge();
+  // If actions modal open, rebuild it
+  const m = document.getElementById('modal-actions');
+  if(m && m.classList.contains('open')) buildActionsModal();
+}
+
+// ── FILTER ────────────────────────────────────────────
+function setPF(v){
+  pFilter = v;
+  document.getElementById('pf-all').style.borderColor  = (v==='')?'rgba(77,159,255,.5)':'';
+  document.getElementById('pf-all').style.color        = (v==='')?'var(--accent2)':'';
+  document.getElementById('pf-high').style.borderColor = (v==='high')?'rgba(239,68,68,.5)':'';
+  document.getElementById('pf-high').style.color       = (v==='high')?'#fca5a5':'';
+  render();
+}
+
+// ── ACTIONS ENGINE ────────────────────────────────────
+// bucket: 'today' | 'week' | 'soon' | 'followup'
+function getActions(t){
+  const acts = [];
+  const stages = t.stages || [];
+
+  function push(bucket, icon, msg, sub, extra){
+    acts.push(Object.assign({bucket:bucket, icon:icon, msg:msg, sub:sub}, extra||{}));
+  }
+
+  function dateActions(dl, icon, label, dateStr){
+    if(dl === null) return;
+    if(dl < 0)
+      push('today', icon, label+' EXPIRED '+Math.abs(dl)+' day'+(Math.abs(dl)>1?'s':'')+' ago', 'Date: '+dateStr+' — act immediately');
+    else if(dl === 0)
+      push('today', icon, label+' is TODAY', 'Date: '+dateStr);
+    else if(dl <= 7)
+      push('week',  icon, label+' in '+dl+' day'+(dl>1?'s':''), 'Date: '+dateStr);
+    else if(dl <= 30)
+      push('soon',  icon, label+' in '+dl+' days', 'Date: '+dateStr);
+  }
+
+  // Bid validity — extra coverage: expired also shows in today
+  const vd = daysLeft(t.validity);
+  dateActions(vd, '🗓️', 'Bid Validity', fmt(t.validity)||'');
+
+  // Sale end
+  const sd = daysLeft(t.saleEnd);
+  if(sd !== null){
+    if(sd < 0 && stages.includes(0))
+      push('followup', '➡️', 'Sale has ended — move to next stage', 'Still in Sale End Awaited');
+    else
+      dateActions(sd, '📌', 'Sale End', fmt(t.saleEnd)||'');
+  }
+
+  // Tech bid opening
+  const td = daysLeft(t.techBid);
+  if(td !== null){
+    if(td < 0 && stages.includes(1))
+      push('followup', '➡️', 'Tech Bid Opening date passed', 'Update stage to TBA and CBA at My End');
+    else
+      dateActions(td, '🔓', 'Tech Bid Opening', fmt(t.techBid)||'');
+  }
+
+  // Price bid opening
+  const pd = daysLeft(t.priceBid);
+  if(pd !== null){
+    if(pd < 0 && (stages.includes(6)||stages.includes(7)))
+      push('followup', '➡️', 'Price Bid Opening date passed', 'Update stage accordingly');
+    else
+      dateActions(pd, '💰', 'Price Bid Opening', fmt(t.priceBid)||'');
+  }
+
+  // Reverse auction
+  const rd = daysLeft(t.ra);
+  if(rd !== null){
+    if(rd < 0 && stages.includes(8))
+      push('followup', '➡️', 'Reverse Auction date passed', 'Update to next workflow stage');
+    else
+      dateActions(rd, '🔄', 'Reverse Auction', fmt(t.ra)||'');
+  }
+
+  // TCQ End Date
+  const qd = daysLeft(t.tcq);
+  dateActions(qd, '📋', 'TCQ End Date', fmt(t.tcq)||'');
+
+  // Stage nudges (snoozeable)
+  const nudges = [
+    {sid:5,  icon:'📋', msg:'AF Approval Pending — follow up',     sub:'Check with approving authority for status'},
+    {sid:9,  icon:'🔍', msg:'Under CS Checking — follow up',        sub:'Check status of CS checking'},
+    {sid:10, icon:'🔍', msg:'Reasonability/Workability check due',  sub:'Ensure cost analysis is submitted'},
+    {sid:11, icon:'🤝', msg:'Negotiation Approval pending',         sub:'Follow up with negotiation committee'},
+    {sid:12, icon:'📝', msg:'WO Verification in progress',          sub:'Check if work order document is ready'},
+    {sid:13, icon:'🔀', msg:'Under Price Matching — action needed', sub:'Review and finalise price comparison'},
+    {sid:14, icon:'🏆', msg:'Proposal for Award — action needed',   sub:'Review and proceed with award decision'},
+    {sid:16, icon:'📜', msg:'AOC Pending — follow up',              sub:'Coordinate acceptance of contract'},
+    {sid:17, icon:'✍️', msg:'Agreement Pending — follow up',        sub:'Ensure agreement is signed and filed'},
+  ];
+  nudges.forEach(function(n){
+    if(stages.includes(n.sid)){
+      const sk = t.id+'_'+n.sid;
+      if(!isSnoozed(sk)){
+        push('followup', n.icon, n.msg, n.sub, {snoozeKey:sk});
+      }
+    }
+  });
+
+  // Manual follow-up reminder
+  const fuEntry = getFUFor(t.id);
+  if(fuEntry){
+    const todayMs = (function(){ const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
+    const dLeft = Math.round((fuEntry.until - todayMs) / 86400000);
+    if(dLeft < 0)
+      push('today', '🔔', 'Follow-up overdue by '+Math.abs(dLeft)+' day'+(Math.abs(dLeft)>1?'s':''), 'Tap to review or reschedule', {isFollowUp:true});
+    else if(dLeft === 0)
+      push('today', '🔔', 'Follow-up due TODAY', 'Tap to review this tender', {isFollowUp:true});
+    else if(dLeft === 1)
+      push('week', '🔔', 'Follow-up due tomorrow', 'Due tomorrow', {isFollowUp:true});
+    else if(dLeft <= 7)
+      push('week', '🔔', 'Follow-up due in '+dLeft+' days', 'Due on '+new Date(fuEntry.until).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}), {isFollowUp:true});
+    else
+      push('soon', '🔔', 'Follow-up due in '+dLeft+' days', 'Due on '+new Date(fuEntry.until).toLocaleDateString('en-IN',{day:'2-digit',month:'short'}), {isFollowUp:true});
+  }
+
+  return acts;
+}
+
+// ── BADGE ─────────────────────────────────────────────
+function refreshBadge(){
+  let todayCount = 0, total = 0;
+  tenders.forEach(function(t){
+    if(t.stages && t.stages.length===1 && t.stages[0]===18) return;
+    getActions(t).forEach(function(a){
+      total++;
+      if(a.bucket==='today') todayCount++;
+    });
+  });
+  const badge = document.getElementById('today-badge');
+  const btn   = document.getElementById('btn-today');
+  if(!badge || !btn) return;
+  const count = todayCount || total;
+  badge.textContent = count;
+  if(count > 0){ btn.classList.add('lit'); }
+  else { btn.classList.remove('lit'); }
+}
+
+// ── BUILD ACTIONS MODAL ───────────────────────────────
+function buildActionsModal(){
+  const body = document.getElementById('actions-body');
+  if(!body) return;
+  const today = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  const allItems = [];
+  tenders.forEach(function(t){
+    if(t.stages && t.stages.length===1 && t.stages[0]===18) return;
+    getActions(t).forEach(function(a){ allItems.push({a:a, t:t}); });
+  });
+
+  // Badge
+  const todayCount = allItems.filter(function(x){ return x.a.bucket==='today'; }).length;
+  const badge = document.getElementById('today-badge');
+  const btn   = document.getElementById('btn-today');
+  if(badge && btn){
+    badge.textContent = todayCount || allItems.length;
+    if(allItems.length > 0) btn.classList.add('lit');
+    else btn.classList.remove('lit');
+  }
+
+  if(!allItems.length){
+    body.innerHTML =
+      '<div class="actions-date">'+today+'</div>'+
+      '<div class="no-actions">'+
+        '<div class="no-actions-icon">✅</div>'+
+        '<div class="no-actions-title">All clear!</div>'+
+        '<div class="no-actions-sub">No actions due today or upcoming deadlines.</div>'+
+      '</div>';
+    return;
+  }
+
+  // Group into 4 strict buckets
+  const groups = {today:[], week:[], soon:[], followup:[]};
+  allItems.forEach(function(x){ (groups[x.a.bucket] || groups.followup).push(x); });
+
+  const groupMeta = {
+    today:    {icon:'🔴', title:'Due Today',          cls:'s-today'},
+    week:     {icon:'⚠️', title:'This Week',          cls:'s-week'},
+    soon:     {icon:'📅', title:'Coming Up (8–30d)',  cls:'s-soon'},
+    followup: {icon:'📋', title:'Follow Up',          cls:'s-followup'},
+  };
+
+  function renderItem(x){
+    const a = x.a, t = x.t;
+    const canSnooze = a.snoozeKey;
+    return '<div class="ai">'+
+      '<div class="ai-icon">'+a.icon+'</div>'+
+      '<div class="ai-body" onclick="closeM(\'modal-actions\');openDetail(\''+t.id+'\')">' +
+        '<div class="ai-tender">'+esc(t.no)+(t.priority==='high'?' 🔴':'')+'</div>'+
+        '<div class="ai-msg">'+a.msg+'</div>'+
+        '<div class="ai-sub">'+a.sub+'</div>'+
+      '</div>'+
+      (canSnooze
+        ? '<button class="snooze-btn" onclick="snoozeItem(\''+a.snoozeKey+'\')">3d ✓</button>'
+        : '<div class="ai-arrow" onclick="closeM(\'modal-actions\');openDetail(\''+t.id+'\')">›</div>'
+      )+
+    '</div>';
+  }
+
+  let html = '<div class="actions-date">'+today+'</div>';
+  ['today','week','soon','followup'].forEach(function(g){
+    if(!groups[g].length) return;
+    const m = groupMeta[g];
+    html += '<div class="ag '+m.cls+'">'
+      + '<div class="ag-header">'
+        + '<span class="ag-title">'+m.icon+' '+m.title+'</span>'
+        + '<span class="ag-count">'+groups[g].length+'</span>'
+      + '</div>';
+    groups[g].forEach(function(x){ html += renderItem(x); });
+    html += '</div>';
+  });
+
+  body.innerHTML = html;
+}
+
+function openActions(){
+  buildActionsModal();
+  openM('modal-actions');
+}
+
+// ── RENDER BOARD ──────────────────────────────────────
+function render(){
+  const _fuCache = getFU();  // parse localStorage once per render, not per chip
+  const _todayStart = (function(){ const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
+  const q = document.getElementById('search').value.toLowerCase().trim();
+  const list = tenders.filter(function(t){
+    if(pFilter && t.priority !== pFilter) return false;
+    if(!q) return true;
+    return t.no.toLowerCase().includes(q) ||
+           (t.notes||'').toLowerCase().includes(q) ||
+           (t.emd||'').toString().includes(q);
+  });
+
+  const activeStages = new Set(list.flatMap(function(t){ return t.stages; }));
+  const expiring = tenders.filter(function(t){ const d=daysLeft(t.validity); return d!==null&&d>=0&&d<=30; }).length;
+  document.getElementById('s-total').textContent  = tenders.length;
+  document.getElementById('s-stages').textContent = activeStages.size;
+  document.getElementById('s-expiry').textContent = expiring;
+  const ec = document.getElementById('s-expiry-chip');
+  if(ec){ expiring ? ec.classList.remove('hidden') : ec.classList.add('hidden'); }
+
+  refreshBadge();
+
+  const board = document.getElementById('board');
+  if(!tenders.length){
+    board.innerHTML =
+      '<div class="board-empty">'+
+        '<div class="board-empty-icon">📋</div>'+
+        '<div class="board-empty-title">No tenders yet</div>'+
+        '<div class="board-empty-sub">Tap + Add to get started</div>'+
+      '</div>';
+    return;
+  }
+
+  const map = {};
+  STAGES.forEach(function(s){ map[s.id]=[]; });
+  list.forEach(function(t){ t.stages.forEach(function(sid){ if(map[sid]) map[sid].push(t); }); });
+
+  board.innerHTML = STAGES.map(function(s){
+    const items = map[s.id];
+    const has   = items.length > 0;
+    const chips = has ? items.map(function(t){
+      const w = daysLeft(t.validity) !== null && daysLeft(t.validity) <= 30;
+      const h = t.priority === 'high';
+      const age = stageAge(t, s.id);
+      const ageLabel = age === null ? '\u2013' : (age === 0 ? '0d' : age + 'd');
+      const fuEntry = _fuCache[t.id] || null;
+      const fuDue = fuEntry && fuEntry.until <= _todayStart;
+      const fuCls = fuDue ? ' fu-due' : '';
+      const bellContent = ageLabel + (fuDue ? ' \uD83D\uDD14' : '');
+      const tid = t.id;
+      return '<div style="display:inline-flex;align-items:center">'
+        + '<span class="tchip' + (h ? ' p-high' : '') + '" onclick="openDetail(\'' + tid + '\')">'
+          + '<span class="tchip-dot" style="background:' + s.color + ';box-shadow:0 0 4px ' + s.color + '88"></span>'
+          + esc(t.no) + (w ? ' <span style="font-size:10px">\u26A0</span>' : '')
+        + '</span>'
+        + '<span class="tchip-fu' + fuCls + '" onclick="event.stopPropagation();openFollowUp(\'' + tid + '\')">'
+          + bellContent
+        + '</span>'
+      + '</div>';
+    }).join('') : '';
+
+    return '<div class="srow'+(has?' has-items':' no-items')+'">'+
+      '<div class="srow-label">'+
+        '<span class="srow-dot" style="background:'+s.color+';opacity:'+(has?1:.25)+';'+(has?'box-shadow:0 0 6px '+s.color+'66':'')+'""></span>'+
+        '<span class="srow-name">'+s.label+'</span>'+
+        '<span class="srow-cnt">'+items.length+'</span>'+
+      '</div>'+
+      '<div class="srow-chips">'+chips+'</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ── DETAIL ────────────────────────────────────────────
+function openDetail(id){
+  const t = tenders.find(function(x){ return x.id===id; });
+  if(!t) return;
+  document.getElementById('btn-edit-d').onclick     = function(){ closeM('modal-detail'); openEdit(id); };
+  document.getElementById('btn-del-d').onclick      = function(){ closeM('modal-detail'); openDel(id); };
+  document.getElementById('btn-followup-d').onclick = function(){ openFollowUp(id); };
+
+  const vdl = daysLeft(t.validity);
+  const vc  = vdl===null?'':vdl<0?'danger':vdl<=14?'danger':vdl<=30?'warn':'';
+
+  const dateRows = [
+    ['Sale End',        t.saleEnd,  ''],
+    ['Tech Bid Opening',t.techBid,  ''],
+    ['Price Bid Opening',t.priceBid,''],
+    ['Reverse Auction', t.ra,       ''],
+    ['Bid Validity',    t.validity, vc],
+    ['TCQ End Date',    t.tcq,      ''],
+  ].filter(function(r){ return !!r[1]; });
+
+  const acts = getActions(t);
+  let actHtml = '';
+  if(acts.length){
+    actHtml = '<div class="detail-sec">Actions Needed</div>';
+    acts.forEach(function(a){
+      const bg  = a.bucket==='today'   ? 'rgba(185,28,28,.1)'
+                : a.bucket==='week'    ? 'rgba(120,80,0,.1)'
+                : a.bucket==='soon'    ? 'rgba(77,159,255,.06)'
+                : 'var(--surface)';
+      const bdr = a.bucket==='today'   ? 'rgba(239,68,68,.3)'
+                : a.bucket==='week'    ? 'rgba(251,191,36,.22)'
+                : a.bucket==='soon'    ? 'rgba(77,159,255,.2)'
+                : 'var(--border2)';
+      const col = a.bucket==='today'   ? '#f87171'
+                : a.bucket==='week'    ? '#fbbf24'
+                : a.bucket==='soon'    ? 'var(--accent2)'
+                : 'var(--text)';
+      actHtml +=
+        '<div style="display:flex;gap:8px;align-items:flex-start;padding:9px 12px;margin-bottom:6px;'+
+          'border-radius:8px;background:'+bg+';border:1px solid '+bdr+'">'+
+          '<span style="font-size:14px;flex-shrink:0">'+a.icon+'</span>'+
+          '<div>'+
+            '<div style="font-size:12px;color:'+col+';font-weight:600;margin-bottom:2px">'+a.msg+'</div>'+
+            '<div style="font-size:11px;color:var(--dim);font-family:var(--mono)">'+a.sub+'</div>'+
+          '</div>'+
+        '</div>';
+    });
+  }
+
+  let datesHtml = '';
+  if(dateRows.length){
+    datesHtml = '<div class="detail-sec">Dates</div><div class="detail-dates">';
+    dateRows.forEach(function(r){
+      const extra = r[2]==='danger'&&vdl!==null ? (vdl<0?' (expired)':' ('+vdl+'d)') :
+                    r[2]==='warn' ? ' ('+vdl+'d)' : '';
+      datesHtml += '<div><div class="dd-l">'+r[0]+'</div><div class="dd-v '+r[2]+'">'+fmt(r[1])+(extra||'—'.slice(fmt(r[1])?1:0))+'</div></div>';
+    });
+    datesHtml += '</div>';
+  }
+
+  document.getElementById('detail-body').innerHTML =
+    '<div class="detail-no">'+esc(t.no)+'</div>'+
+    (t.priority==='high'?
+      '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(185,28,28,.15);'+
+        'border:1px solid rgba(239,68,68,.4);border-radius:7px;padding:5px 11px;font-size:12px;'+
+        'font-weight:600;color:#fca5a5;margin-bottom:12px">🔴 High Priority</div>':'')+
+    '<div class="detail-stages">'+
+      t.stages.map(function(sid){
+        const s = sg(sid);
+        const age = stageAge(t, sid);
+        const ageStr = age!==null ? ' <span style="font-size:9px;opacity:.6;font-weight:400">'+
+          (age===0?'added today':age+'d ago')+'</span>' : '';
+        return '<span style="display:inline-flex;align-items:center;gap:5px;background:'+s.color+'18;'+
+          'border:1px solid '+s.color+'44;border-radius:6px;padding:4px 10px;font-size:11px;'+
+          'font-weight:600;color:'+s.color+';font-family:var(--mono)">'+s.label+ageStr+'</span>';
+      }).join('')+
+    '</div>'+
+    actHtml+
+    datesHtml+
+    (t.emd?'<div class="detail-sec">EMD</div><div style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);padding:4px 0">₹'+Math.round(Number(t.emd)).toLocaleString('en-IN')+'</div>':'')+
+    (t.notes?'<div class="detail-sec">Notes</div><div class="detail-notes">'+esc(t.notes)+'</div>':'');
+
+  openM('modal-detail');
+}
+
+// ── ADD / EDIT ────────────────────────────────────────
+function buildSelects(){
+  document.getElementById('f-stage').innerHTML =
+    STAGES.map(function(s){ return '<option value="'+s.id+'">'+s.label+'</option>'; }).join('');
+}
+
+function openAdd(){
+  editId = null;
+  document.getElementById('modal-title').textContent = 'Add Tender';
+  clearForm();
+  document.getElementById('rbox').classList.add('hidden');
+  openM('modal-add');
+}
+
+function openEdit(id){
+  const t = tenders.find(function(x){ return x.id===id; });
+  if(!t) return;
+  editId = id;
+  document.getElementById('modal-title').textContent = 'Edit Tender';
+  fillForm(t);
+  buildChips(t);
+  document.getElementById('rbox').classList.remove('hidden');
+  openM('modal-add');
+}
+
+function fillForm(t){
+  document.getElementById('f-no').value       = t.no || '';
+  document.getElementById('f-stage').value    = t.stages.length ? t.stages[t.stages.length-1] : 0;
+  document.getElementById('f-notes').value    = t.notes || '';
+  document.getElementById('f-emd').value      = t.emd   || '';
+  document.getElementById('f-sale-end').value = t.saleEnd || '';
+  document.getElementById('f-tech-bid').value = t.techBid || '';
+  document.getElementById('f-price-bid').value= t.priceBid || '';
+  document.getElementById('f-ra').value       = t.ra || '';
+  document.getElementById('f-validity').value = t.validity || '';
+  document.getElementById('f-tcq').value      = t.tcq || '';
+  setPri(t.priority === 'high');
+}
+
+function clearForm(){
+  ['f-no','f-notes','f-emd','f-sale-end','f-tech-bid','f-price-bid','f-ra','f-validity','f-tcq']
+    .forEach(function(i){ const e=document.getElementById(i); if(e) e.value=''; });
+  document.getElementById('f-stage').value = 0;
+  setPri(false);
+}
+
+function buildChips(t){
+  const w = document.getElementById('stage-chips');
+  if(!t.stages.length){
+    w.innerHTML = '<span style="font-size:12px;color:var(--dim)">No stages yet</span>';
+    return;
+  }
+  w.innerHTML = t.stages.map(function(sid){
+    return '<div class="chip">'+
+      '<span class="chip-l">'+sg(sid).label+'</span>'+
+      '<button class="chip-x" onclick="removeStage(\''+t.id+'\','+sid+')">×</button>'+
+    '</div>';
+  }).join('');
+}
+
+function removeStage(id, sid){
+  const t = tenders.find(function(x){ return x.id===id; });
+  if(!t) return;
+  t.stages = t.stages.filter(function(s){ return s!==sid; });
+  if(t.stageEnteredAt) delete t.stageEnteredAt[sid];
+  save(); render(); buildChips(t); toast('Stage removed');
+  syncPush();
+}
+
+function saveTender(){
+  const no = document.getElementById('f-no').value.trim();
+  if(!no){ toast('Tender No required', true); return; }
+  const sid = parseInt(document.getElementById('f-stage').value);
+  const fields = {
+    no: no,
+    priority:  document.getElementById('pri-toggle').classList.contains('on') ? 'high' : '',
+    notes:     document.getElementById('f-notes').value.trim(),
+    emd:       document.getElementById('f-emd').value.trim() ? String(Math.round(Number(document.getElementById('f-emd').value))) : '',
+    saleEnd:   document.getElementById('f-sale-end').value,
+    techBid:   document.getElementById('f-tech-bid').value,
+    priceBid:  document.getElementById('f-price-bid').value,
+    ra:        document.getElementById('f-ra').value,
+    validity:  document.getElementById('f-validity').value,
+    tcq:       document.getElementById('f-tcq').value,
+  };
+  if(editId){
+    const t = tenders.find(function(x){ return x.id===editId; });
+    if(!t) return;
+    Object.assign(t, fields);
+    if(!t.stages.includes(sid)){
+      t.stages.push(sid);
+      if(!t.stageEnteredAt) t.stageEnteredAt = {};
+      const mn = new Date(); mn.setHours(0,0,0,0);
+      t.stageEnteredAt[sid] = mn.getTime();
+    }
+    toast('Updated ✓');
+  } else {
+    if(tenders.find(function(x){ return x.no.toLowerCase()===no.toLowerCase(); })){
+      toast('Tender No already exists', true); return;
+    }
+    const mn = new Date(); mn.setHours(0,0,0,0);
+    const entered = {}; entered[sid] = mn.getTime();
+    tenders.unshift({id:uid(), stages:[sid], stageEnteredAt:entered, ...fields});
+    toast('Tender added ✓');
+  }
+  save(); render(); closeM('modal-add');
+  syncPush();
+}
+
+// ── PRIORITY TOGGLE ───────────────────────────────────
+function togglePri(){ setPri(!document.getElementById('pri-toggle').classList.contains('on')); }
+function setPri(on){
+  document.getElementById('pri-toggle').classList.toggle('on', on);
+  document.getElementById('pri-check').textContent = on ? '✓' : '';
+}
+
+// ── DELETE ────────────────────────────────────────────
+function openDel(id){
+  const t = tenders.find(function(x){ return x.id===id; });
+  if(!t) return;
+  document.getElementById('del-q').textContent = 'Delete "'+t.no+'"?';
+  document.getElementById('del-ok').onclick = function(){ doDelete(id); };
+  openM('modal-del');
+}
+function doDelete(id){
+  tenders = tenders.filter(function(x){ return x.id!==id; });
+  save(); render(); closeM('modal-del'); toast('Deleted');
+  syncPush();
+}
+
+// ── MODAL HELPERS ─────────────────────────────────────
+function openM(id){ document.getElementById(id).classList.add('open'); }
+function closeM(id){ document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.overlay').forEach(function(el){
+  el.addEventListener('click', function(e){ if(e.target===el) el.classList.remove('open'); });
+});
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(function(m){ m.classList.remove('open'); });
+});
+
+// ── TOAST ─────────────────────────────────────────────
+let _tt;
+function toast(msg, err){
+  const el = document.getElementById('toast');
+  el.textContent = (err?'✗ ':'✓ ')+msg;
+  el.style.borderColor = err?'rgba(239,68,68,.5)':'rgba(52,211,153,.4)';
+  el.classList.add('show'); clearTimeout(_tt);
+  _tt = setTimeout(function(){ el.classList.remove('show'); }, 2200);
+}
+
+// ── GOOGLE SHEETS SYNC ────────────────────────────────
+// Apps Script handles CORS by accepting data via GET param (jsonp-style push)
+// and returning JSONP for pull — both bypass CORS entirely.
+const APPS_SCRIPT =
+`function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName('TenderData') || ss.insertSheet('TenderData');
+  var action = e.parameter.action || '';
+
+  // PUSH: data sent as ?action=write&d=...
+  if (action === 'write') {
+    var d = e.parameter.d || '';
+    sh.getRange(1, 1).setValue(d);
+    var cb = e.parameter.cb || 'cb';
+    return ContentService
+      .createTextOutput(cb + '({"ok":true})')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  // PULL: returns data wrapped in JSONP callback
+  var data = sh.getRange(1, 1).getValue() || '[]';
+  var cb = e.parameter.cb || 'cb';
+  return ContentService
+    .createTextOutput(cb + '(' + data + ')')
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}`;
+
+function setSyncDot(state){
+  const dot = document.getElementById('sync-dot');
+  const btn  = document.getElementById('btn-sync');
+  if(!dot||!btn) return;
+  dot.className = 'sync-dot' + (state!=='idle'?' '+state:'');
+  btn.className  = 'btn-sync' + (syncUrl&&state==='ok'?' ok':'');
+}
+
+function openSync(){
+  const configured = !!syncUrl;
+  const lastSync   = localStorage.getItem('tt_last_sync');
+  const lsStr = lastSync ? new Date(+lastSync).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : 'Never';
+
+  let html = '';
+  if(configured){
+    html =
+      '<div class="sync-bar"><span class="sync-dot ok"></span><span>Connected · Last sync: <b>'+lsStr+'</b></span></div>'+
+      '<div class="sync-acts">'+
+        '<button class="btn-push" onclick="syncPush()">⬆ Push to Cloud</button>'+
+        '<button class="btn-pull" onclick="syncPull()">⬇ Pull from Cloud</button>'+
+      '</div>'+
+      '<p style="font-size:12px;color:var(--dim);margin-bottom:14px;line-height:1.6">'+
+        '<b style="color:var(--text)">Push</b> — uploads your local data to Google Sheets.<br>'+
+        '<b style="color:var(--text)">Pull</b> — loads data from Google Sheets to this device.'+
+      '</p>'+
+      '<div class="fsec" style="border-top:none;padding-top:0">Web App URL</div>'+
+      '<div class="frow"><input class="fi" id="sync-url-input" value="'+esc(syncUrl)+'" style="font-size:12px;"></div>'+
+      '<div class="sync-warn">⚠ Auto-pull runs each time you open the app, so both devices stay in sync.</div>';
+  } else {
+    html =
+      '<div class="sync-step"><div class="sync-step-num">1</div><div class="sync-step-body">'+
+        '<div class="sync-step-title">Create a new Google Sheet</div>'+
+        '<div class="sync-step-desc">Go to <a href="https://sheets.google.com" target="_blank">sheets.google.com</a> → click <b>Blank</b>.</div>'+
+      '</div></div>'+
+      '<div class="sync-step"><div class="sync-step-num">2</div><div class="sync-step-body">'+
+        '<div class="sync-step-title">Open Apps Script</div>'+
+        '<div class="sync-step-desc">Click <b>Extensions → Apps Script</b>. Delete all existing code and paste this:</div>'+
+        '<div class="sync-code" onclick="copyScript()" id="sync-code-block"></div>'+
+      '</div></div>'+
+      '<div class="sync-step"><div class="sync-step-num">3</div><div class="sync-step-body">'+
+        '<div class="sync-step-title">Deploy as Web App</div>'+
+        '<div class="sync-step-desc">Click <b>Deploy → New deployment</b>. Type: <b>Web app</b>. Execute as: <b>Me</b>. Access: <b>Anyone</b>. Click Deploy and authorize.</div>'+
+      '</div></div>'+
+      '<div class="sync-step"><div class="sync-step-num">4</div><div class="sync-step-body">'+
+        '<div class="sync-step-title">Paste your Web App URL</div>'+
+        '<div class="sync-step-desc">Copy the URL shown after deployment:</div>'+
+        '<div class="frow" style="margin-top:8px;margin-bottom:0">'+
+          '<input class="fi" id="sync-url-input" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:12px;">'+
+        '</div>'+
+      '</div></div>';
+  }
+
+  html +=
+    '<div class="mfoot" style="padding-top:14px;border-top:1px solid var(--border)">'+
+      (configured?'<button id="btn-disconnect" class="btn-c" onclick="disconnectSync()" style="margin-right:auto;color:#f87171;border-color:rgba(239,68,68,.3)">Disconnect</button>':'')+
+      '<button class="btn-c" onclick="closeM(\'modal-sync\')">Cancel</button>'+
+      '<button class="btn-s" onclick="saveSync()">'+(configured?'Save':'Connect')+'</button>'+
+    '</div>';
+
+  document.getElementById('sync-body').innerHTML = html;
+  // Set script text safely (avoids XSS from esc() and shows real newlines)
+  const codeEl = document.getElementById('sync-code-block');
+  if(codeEl) codeEl.textContent = APPS_SCRIPT;
+  openM('modal-sync');
+}
+
+function copyScript(){
+  navigator.clipboard.writeText(APPS_SCRIPT).then(function(){ toast('Script copied!'); }).catch(function(){
+    const el = document.createElement('textarea');
+    el.value = APPS_SCRIPT; document.body.appendChild(el); el.select();
+    document.execCommand('copy'); document.body.removeChild(el);
+    toast('Script copied!');
+  });
+}
+
+function saveSync(){
+  const inp = document.getElementById('sync-url-input');
+  if(!inp) return;
+  const val = inp.value.trim();
+  if(!val){ toast('Please enter the Web App URL', true); return; }
+  if(!val.includes('script.google.com')){ toast('URL should be from script.google.com', true); return; }
+  syncUrl = val;
+  localStorage.setItem(SYNC_KEY, syncUrl);
+  toast('Connected ✓');
+  closeM('modal-sync');
+  syncPull();
+}
+
+function disconnectSync(){
+  const btn = document.getElementById('btn-disconnect');
+  if(btn && btn.dataset.armed === '1'){
+    syncUrl = '';
+    localStorage.removeItem(SYNC_KEY);
+    localStorage.removeItem('tt_last_sync');
+    setSyncDot('idle');
+    closeM('modal-sync');
+    toast('Sync disconnected');
+  } else if(btn) {
+    btn.dataset.armed = '1';
+    btn.textContent = 'Tap again to confirm';
+    btn.style.color = '#f87171';
+    setTimeout(()=>{ btn.dataset.armed='0'; btn.textContent='Disconnect'; btn.style.color=''; }, 2500);
+  }
+}
+
+// JSONP helper — injects a <script> tag, calls back, then removes it
+function jsonp(url, cbName, timeout){
+  return new Promise(function(resolve, reject){
+    const id = cbName || ('_tt_cb_' + Date.now());
+    let done = false;
+    const timer = setTimeout(function(){
+      if(done) return; done = true;
+      delete window[id];
+      const s = document.getElementById('_jsonp_'+id);
+      if(s) s.parentNode.removeChild(s);
+      reject(new Error('timeout'));
+    }, timeout || 12000);
+
+    window[id] = function(data){
+      if(done) return; done = true;
+      clearTimeout(timer);
+      delete window[id];
+      const s = document.getElementById('_jsonp_'+id);
+      if(s) s.parentNode.removeChild(s);
+      resolve(data);
+    };
+
+    const script = document.createElement('script');
+    script.id = '_jsonp_' + id;
+    script.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + id;
+    script.onerror = function(){
+      if(done) return; done = true;
+      clearTimeout(timer);
+      delete window[id];
+      reject(new Error('script error'));
+    };
+    document.head.appendChild(script);
+  });
+}
+
+async function syncPush(){
+  if(!syncUrl) return;
+  setSyncDot('busy');
+  try{
+    // Serialize with short keys to minimize size
+    const slim = tenders.map(function(t){
+      const o = {id:t.id, no:t.no, stages:t.stages};
+      if(t.stageEnteredAt && Object.keys(t.stageEnteredAt).length) o.sea = t.stageEnteredAt;
+      if(t.priority) o.p  = t.priority;
+      if(t.notes)    o.n  = t.notes;
+      if(t.emd)      o.e  = t.emd;
+      if(t.saleEnd)  o.s  = t.saleEnd;
+      if(t.techBid)  o.tb = t.techBid;
+      if(t.priceBid) o.pb = t.priceBid;
+      if(t.ra)       o.ra = t.ra;
+      if(t.validity) o.v  = t.validity;
+      if(t.tcq)      o.q  = t.tcq;
+      return o;
+    });
+
+    // Split into chunks of ~4000 chars each
+    const full = JSON.stringify(slim);
+    const CHUNK = 4000;
+    const chunks = [];
+    for(let i = 0; i < full.length; i += CHUNK){
+      chunks.push(full.slice(i, i + CHUNK));
+    }
+    const total = chunks.length;
+
+    // Send each chunk: action=chunk&i=0&total=3&d=...
+    for(let i = 0; i < total; i++){
+      const d = encodeURIComponent(chunks[i]);
+      const url = syncUrl + '?action=chunk&i='+i+'&total='+total+'&d='+d;
+      await jsonp(url, '_tt_chunk_'+i);
+    }
+
+    // Signal write complete
+    await jsonp(syncUrl + '?action=commit', '_tt_commit');
+    localStorage.setItem('tt_last_sync', Date.now().toString());
+    setSyncDot('ok'); toast('Synced to cloud ✓');
+  } catch(e){
+    setSyncDot('err'); toast('Push failed — check URL', true);
+    console.warn('Sync push error:', e.message);
+  }
+}
+
+async function syncPull(){
+  if(!syncUrl) return;
+  setSyncDot('busy');
+  try{
+    const remote = await jsonp(syncUrl + '?action=read', '_tt_pull');
+    const arr = Array.isArray(remote) ? remote : null;
+    if(arr && arr.length > 0){
+      // expand short keys back to full keys
+      tenders = arr.map(function(t){
+        return {
+          id:             t.id,
+          no:             t.no,
+          stages:         t.stages || [],
+          stageEnteredAt: t.sea || t.stageEnteredAt || {},
+          priority:       t.p   || t.priority || '',
+          notes:          t.n   || t.notes    || '',
+          emd:            t.e   || t.emd      || '',
+          saleEnd:        t.s   || t.saleEnd  || '',
+          techBid:        t.tb  || t.techBid  || '',
+          priceBid:       t.pb  || t.priceBid || '',
+          ra:             t.ra  || '',
+          validity:       t.v   || t.validity || '',
+          tcq:            t.q   || t.tcq      || '',
+        };
+      });
+      save(); render();
+      localStorage.setItem('tt_last_sync', Date.now().toString());
+      setSyncDot('ok'); toast('Pulled from cloud ✓');
+    } else {
+      setSyncDot('ok');
+    }
+  } catch(e){
+    setSyncDot('err'); toast('Pull failed — check URL', true);
+    console.warn('Sync pull error:', e);
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────
+load();
+buildSelects();
+render();
+setSyncDot('idle');
+if(syncUrl) syncPull();
+</script>
+</body>
+</html>
