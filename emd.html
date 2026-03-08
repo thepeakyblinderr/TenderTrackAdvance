@@ -763,7 +763,7 @@ async function syncPush(){
   setSyncDot('busy');
   try{
     const full = JSON.stringify(tenders);
-    const CHUNK = 4000;
+    const CHUNK = 1500; // keep small so encodeURIComponent stays under Apps Script URL limit
     const chunks = [];
     for(let i = 0; i < full.length; i += CHUNK) chunks.push(full.slice(i, i+CHUNK));
     const total = chunks.length;
