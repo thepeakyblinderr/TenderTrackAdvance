@@ -132,7 +132,7 @@ main{padding:16px;padding-bottom:calc(30px + var(--safe-bot));}
   box-shadow:0 2px 6px rgba(0,0,0,.09);transition:all .15s;}
 .tchip-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
 [data-theme="dark"] .tchip.p-high{background:linear-gradient(135deg,rgba(185,28,28,.25),rgba(239,68,68,.12));border-color:rgba(239,68,68,.5);color:#fca5a5;}
-[data-theme="light"] .tchip.p-high{background:linear-gradient(135deg,#fff5f5,#fff);border-color:rgba(220,32,32,.4);color:#b91c1c;}
+[data-theme="light"] .tchip.p-high{background:linear-gradient(135deg,#ffd6d6,#ffecec);border-color:rgba(200,20,20,.6);color:#9b0e0e;font-weight:700;box-shadow:0 2px 8px rgba(200,20,20,.18);}
 .srow.no-items .srow-chips{display:none;}
 @media(min-width:600px){
   .board{gap:3px;}
@@ -145,7 +145,7 @@ main{padding:16px;padding-bottom:calc(30px + var(--safe-bot));}
   [data-theme="dark"] .tchip:hover{background:#162840;border-color:rgba(59,158,255,.5);color:var(--accent2);}
   [data-theme="light"] .tchip:hover{background:#eef6ff;border-color:rgba(26,125,255,.5);color:#1a5ec0;}
   [data-theme="dark"] .tchip.p-high:hover{border-color:rgba(239,68,68,.7);color:#fecaca;}
-  [data-theme="light"] .tchip.p-high:hover{border-color:rgba(220,32,32,.6);color:#991b1b;}
+  [data-theme="light"] .tchip.p-high:hover{background:linear-gradient(135deg,#ffc8c8,#ffe0e0);border-color:rgba(180,10,10,.7);color:#7a0808;}
 }
 [data-theme="dark"] .tchip-fu{display:inline-flex;align-items:center;justify-content:center;
   background:#0a1628;border:1px solid #1e3a5a;border-left:none;
@@ -165,6 +165,21 @@ main{padding:16px;padding-bottom:calc(30px + var(--safe-bot));}
 .board-empty-icon{font-size:40px;margin-bottom:12px;opacity:.25;}
 .board-empty-title{font-size:17px;font-weight:600;color:var(--text);margin-bottom:6px;}
 .board-empty-sub{font-size:13px;}
+
+/* DRAG AND DROP */
+.tchip-wrap{display:inline-flex;align-items:center;touch-action:none;}
+.tchip-wrap.dragging .tchip,.tchip-wrap.dragging .tchip-fu{opacity:0.3;}
+.drag-ghost{
+  position:fixed;z-index:9999;pointer-events:none;
+  display:inline-flex;align-items:center;
+  opacity:0.93;transform:scale(1.07) rotate(-1.5deg);
+  box-shadow:0 10px 36px rgba(0,0,0,.55);border-radius:12px;}
+.srow-chips.drag-over{
+  background:rgba(59,158,255,.09);
+  border-radius:8px;outline:2px dashed rgba(59,158,255,.55);
+  outline-offset:3px;min-height:44px;}
+[data-theme="light"] .srow-chips.drag-over{
+  background:rgba(26,125,255,.07);outline-color:rgba(26,125,255,.45);}
 
 /* OVERLAY + MODAL */
 .overlay{position:fixed;inset:0;z-index:100;background:rgba(5,3,12,.85);
@@ -972,39 +987,67 @@ function render(){
   STAGES.forEach(function(s){ map[s.id]=[]; });
   list.forEach(function(t){ t.stages.forEach(function(sid){ if(map[sid]) map[sid].push(t); }); });
 
-  board.innerHTML = STAGES.map(function(s){
+  // Build board using DOM (needed for drag/drop event listeners)
+  board.innerHTML = '';
+  STAGES.forEach(function(s){
     const items = map[s.id];
     const has   = items.length > 0;
-    const chips = has ? items.map(function(t){
-      const w = daysLeft(t.validity) !== null && daysLeft(t.validity) <= 30;
-      const h = t.priority === 'high';
-      const age = stageAge(t, s.id);
-      const ageLabel = age === null ? '\u2013' : (age === 0 ? '0d' : age + 'd');
-      const fuEntry = _fuCache[t.id] || null;
-      const fuDue = fuEntry && fuEntry.until <= _todayStart;
-      const fuCls = fuDue ? ' fu-due' : '';
-      const bellContent = ageLabel + (fuDue ? ' \uD83D\uDD14' : '');
-      const tid = t.id;
-      return '<div style="display:inline-flex;align-items:center">'
-        + '<span class="tchip' + (h ? ' p-high' : '') + '" onclick="openDetail(\'' + tid + '\')">'
-          + '<span class="tchip-dot" style="background:' + s.color + ';box-shadow:0 0 4px ' + s.color + '88"></span>'
-          + esc(t.no) + (w ? ' <span style="font-size:10px">\u26A0</span>' : '')
-        + '</span>'
-        + '<span class="tchip-fu' + fuCls + '" onclick="event.stopPropagation();openFollowUp(\'' + tid + '\')">'
-          + bellContent
-        + '</span>'
-      + '</div>';
-    }).join('') : '';
 
-    return '<div class="srow'+(has?' has-items':' no-items')+'">'+
-      '<div class="srow-label">'+
-        '<span class="srow-dot" style="background:'+s.color+';opacity:'+(has?1:.25)+';'+(has?'box-shadow:0 0 6px '+s.color+'66':'')+'""></span>'+
-        '<span class="srow-name">'+s.label+'</span>'+
-        '<span class="srow-cnt">'+items.length+'</span>'+
-      '</div>'+
-      '<div class="srow-chips">'+chips+'</div>'+
-    '</div>';
-  }).join('');
+    const srow = document.createElement('div');
+    srow.className = 'srow ' + (has ? 'has-items' : 'no-items');
+    srow.dataset.sid = s.id;
+
+    // Label
+    const label = document.createElement('div');
+    label.className = 'srow-label';
+    label.innerHTML =
+      '<span class="srow-dot" style="background:'+s.color+';opacity:'+(has?1:.25)+';'+(has?'box-shadow:0 0 6px '+s.color+'66':'')+'""></span>'+
+      '<span class="srow-name">'+s.label+'</span>'+
+      '<span class="srow-cnt">'+items.length+'</span>';
+    srow.appendChild(label);
+
+    // Chips container — drop target
+    const chipsDiv = document.createElement('div');
+    chipsDiv.className = 'srow-chips';
+    chipsDiv.dataset.sid = s.id;
+
+    if(has){
+      items.forEach(function(t){
+        const w = daysLeft(t.validity) !== null && daysLeft(t.validity) <= 30;
+        const h = t.priority === 'high';
+        const age = stageAge(t, s.id);
+        const ageLabel = age === null ? '\u2013' : (age === 0 ? '0d' : age + 'd');
+        const fuEntry = _fuCache[t.id] || null;
+        const fuDue = fuEntry && fuEntry.until <= _todayStart;
+        const fuCls = fuDue ? ' fu-due' : '';
+        const bellContent = ageLabel + (fuDue ? ' \uD83D\uDD14' : '');
+
+        const wrap = document.createElement('div');
+        wrap.className = 'tchip-wrap';
+        wrap.dataset.tid = t.id;
+        wrap.dataset.sid = s.id;
+
+        const chip = document.createElement('span');
+        chip.className = 'tchip' + (h ? ' p-high' : '');
+        chip.innerHTML = '<span class="tchip-dot" style="background:' + s.color + ';box-shadow:0 0 4px ' + s.color + '88"></span>'
+          + esc(t.no) + (w ? ' <span style="font-size:10px">\u26A0</span>' : '');
+        chip.addEventListener('click', function(){ openDetail(t.id); });
+
+        const fu = document.createElement('span');
+        fu.className = 'tchip-fu' + fuCls;
+        fu.textContent = bellContent;
+        fu.addEventListener('click', function(e){ e.stopPropagation(); openFollowUp(t.id); });
+
+        wrap.appendChild(chip);
+        wrap.appendChild(fu);
+        initDrag(wrap);
+        chipsDiv.appendChild(wrap);
+      });
+    }
+
+    srow.appendChild(chipsDiv);
+    board.appendChild(srow);
+  });
 }
 
 // ── DETAIL ────────────────────────────────────────────
@@ -1492,6 +1535,167 @@ async function syncPull(){
     console.warn('Sync pull error:', e);
   }
 }
+
+
+// ── DRAG AND DROP ─────────────────────────────────────
+(function(){
+  var ghost = null;
+  var dragTid = null, dragFromSid = null;
+  var overChips = null;
+  var longPressTimer = null;
+  var isDragging = false;
+  var startX, startY;
+
+  function createGhost(wrap){
+    var g = wrap.cloneNode(true);
+    g.className = 'drag-ghost';
+    var r = wrap.getBoundingClientRect();
+    g.style.width  = r.width  + 'px';
+    g.style.height = r.height + 'px';
+    g.style.left   = r.left   + 'px';
+    g.style.top    = r.top    + 'px';
+    document.body.appendChild(g);
+    return g;
+  }
+
+  function moveGhost(x, y){
+    if(!ghost) return;
+    ghost.style.left = (x - ghost.offsetWidth/2)  + 'px';
+    ghost.style.top  = (y - ghost.offsetHeight/2) + 'px';
+  }
+
+  function getChipsAt(x, y){
+    var els = document.elementsFromPoint(x, y);
+    for(var i=0;i<els.length;i++){
+      if(els[i].classList.contains('srow-chips')) return els[i];
+      if(els[i].classList.contains('srow')){ 
+        var c = els[i].querySelector('.srow-chips');
+        if(c) return c;
+      }
+    }
+    return null;
+  }
+
+  function startDrag(wrap, clientX, clientY){
+    isDragging = true;
+    dragTid  = wrap.dataset.tid;
+    dragFromSid = parseInt(wrap.dataset.sid);
+    wrap.classList.add('dragging');
+    ghost = createGhost(wrap);
+    moveGhost(clientX, clientY);
+    // Vibrate on mobile if supported
+    if(navigator.vibrate) navigator.vibrate(40);
+  }
+
+  function moveDrag(clientX, clientY){
+    if(!isDragging) return;
+    moveGhost(clientX, clientY);
+    var chips = getChipsAt(clientX, clientY);
+    if(chips !== overChips){
+      if(overChips) overChips.classList.remove('drag-over');
+      overChips = chips;
+      if(overChips) overChips.classList.add('drag-over');
+    }
+  }
+
+  function endDrag(wrap){
+    if(!isDragging) return;
+    isDragging = false;
+    wrap.classList.remove('dragging');
+    if(ghost){ ghost.remove(); ghost = null; }
+    if(overChips){
+      overChips.classList.remove('drag-over');
+      var toSid = parseInt(overChips.dataset.sid);
+      if(!isNaN(toSid) && toSid !== dragFromSid){
+        dropChip(dragTid, dragFromSid, toSid);
+      }
+      overChips = null;
+    }
+    dragTid = null; dragFromSid = null;
+  }
+
+  function cancelDrag(wrap){
+    if(!isDragging) return;
+    isDragging = false;
+    wrap.classList.remove('dragging');
+    if(ghost){ ghost.remove(); ghost = null; }
+    if(overChips){ overChips.classList.remove('drag-over'); overChips = null; }
+    dragTid = null; dragFromSid = null;
+  }
+
+  function dropChip(tid, fromSid, toSid){
+    var t = tenders.find(function(x){ return x.id === tid; });
+    if(!t) return;
+    // Remove from old stage, add to new stage
+    t.stages = t.stages.filter(function(s){ return s !== fromSid; });
+    if(!t.stages.includes(toSid)) t.stages.push(toSid);
+    // Update stageEnteredAt
+    if(!t.stageEnteredAt) t.stageEnteredAt = {};
+    if(!t.stageEnteredAt[toSid]){
+      var midnight = new Date(); midnight.setHours(0,0,0,0);
+      t.stageEnteredAt[toSid] = midnight.getTime();
+    }
+    save(); render();
+    var toStage = STAGES.find(function(s){ return s.id === toSid; });
+    toast('Moved to ' + (toStage ? toStage.label : 'stage'));
+    syncPush();
+  }
+
+  window.initDrag = function(wrap){
+    // ── DESKTOP: mouse drag ──
+    wrap.addEventListener('mousedown', function(e){
+      if(e.button !== 0) return;
+      e.preventDefault();
+      startX = e.clientX; startY = e.clientY;
+      var moved = false;
+
+      function onMove(ev){
+        var dx = ev.clientX - startX, dy = ev.clientY - startY;
+        if(!moved && Math.sqrt(dx*dx+dy*dy) > 6){ moved = true; startDrag(wrap, ev.clientX, ev.clientY); }
+        if(moved) moveDrag(ev.clientX, ev.clientY);
+      }
+      function onUp(ev){
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        if(moved){ endDrag(wrap); }
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    // ── MOBILE: long-press then drag ──
+    wrap.addEventListener('touchstart', function(e){
+      var touch = e.touches[0];
+      startX = touch.clientX; startY = touch.clientY;
+      longPressTimer = setTimeout(function(){
+        longPressTimer = null;
+        startDrag(wrap, startX, startY);
+      }, 400);
+    }, {passive: true});
+
+    wrap.addEventListener('touchmove', function(e){
+      var touch = e.touches[0];
+      var dx = touch.clientX - startX, dy = touch.clientY - startY;
+      if(longPressTimer && Math.sqrt(dx*dx+dy*dy) > 8){
+        clearTimeout(longPressTimer); longPressTimer = null;
+      }
+      if(isDragging){
+        e.preventDefault();
+        moveDrag(touch.clientX, touch.clientY);
+      }
+    }, {passive: false});
+
+    wrap.addEventListener('touchend', function(e){
+      if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; }
+      if(isDragging) endDrag(wrap);
+    });
+
+    wrap.addEventListener('touchcancel', function(){
+      if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; }
+      cancelDrag(wrap);
+    });
+  };
+})();
 
 // ── INIT ──────────────────────────────────────────────
 load();
