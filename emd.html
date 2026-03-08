@@ -235,6 +235,7 @@ main{padding:16px;padding-bottom:calc(30px + var(--safe-bot));}
     <button class="btn-sync" id="btn-sync" onclick="openSync()">
       <span class="sync-dot" id="sync-dot"></span>Sync
     </button>
+    <button class="btn-sync" onclick="exportExcel()" title="Export to Excel" style="background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:#4ade80;">⬇ Excel</button>
   </div>
 </header>
 
@@ -798,6 +799,53 @@ async function syncPull(){
     setSyncDot('err'); toast('Pull failed — check URL', true);
     console.warn('EMD sync pull error:', e);
   }
+}
+
+// ── EXPORT TO EXCEL ───────────────────────────────────
+function exportExcel(){
+  if(!tenders.length){ toast('No data to export', true); return; }
+
+  // Build CSV rows
+  const rows = [['Tender No','Vendor','Amount (INR)','Date','Status','Notes']];
+  tenders.forEach(t => {
+    if(!t.entries || !t.entries.length){
+      rows.push([t.no, '', '', '', '', '']);
+    } else {
+      t.entries.forEach(e => {
+        rows.push([
+          t.no,
+          e.vendor || '',
+          e.amount || '',
+          e.date || '',
+          e.status === 'refund-pending' ? 'Refund Pending' :
+            e.status === 'refunded' ? 'Refunded' : 'Submitted',
+          e.notes || ''
+        ]);
+      });
+    }
+  });
+
+  // Escape CSV cells
+  const csv = rows.map(r =>
+    r.map(c => {
+      const s = String(c).replace(/"/g,'""');
+      return /[,"\n]/.test(s) ? `"${s}"` : s;
+    }).join(',')
+  ).join('\r\n');
+
+  // Add BOM for Excel to correctly read UTF-8 (handles ₹ and other chars)
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `EMDTrack-${date}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Exported to Excel ✓');
 }
 
 // ── INIT ──────────────────────────────────────────────
