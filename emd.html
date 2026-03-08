@@ -734,26 +734,30 @@ function jsonp(url, cbName, timeout){
       if(done) return; done = true;
       delete window[id];
       const s = document.getElementById('_jsonp_'+id);
-      if(s) s.parentNode.removeChild(s);
+      if(s && s.parentNode) s.parentNode.removeChild(s);
       reject(new Error('timeout'));
-    }, timeout || 12000);
+    }, timeout || 15000);
     window[id] = function(data){
       if(done) return; done = true;
       clearTimeout(timer);
       delete window[id];
       const s = document.getElementById('_jsonp_'+id);
-      if(s) s.parentNode.removeChild(s);
+      if(s && s.parentNode) s.parentNode.removeChild(s);
       resolve(data);
     };
+    const old = document.getElementById('_jsonp_'+id);
+    if(old && old.parentNode) old.parentNode.removeChild(old);
     const script = document.createElement('script');
     script.id = '_jsonp_' + id;
-    script.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + id;
     script.onerror = function(){
       if(done) return; done = true;
       clearTimeout(timer); delete window[id];
+      const s = document.getElementById('_jsonp_'+id);
+      if(s && s.parentNode) s.parentNode.removeChild(s);
       reject(new Error('script error'));
     };
-    document.head.appendChild(script);
+    script.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + id;
+    document.body.appendChild(script);
   });
 }
 
