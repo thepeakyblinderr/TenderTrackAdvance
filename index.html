@@ -1509,9 +1509,11 @@ async function syncPush(){
       return o;
     });
 
-    // Split into chunks of ~4000 chars each
+    // Split into chunks — keep small enough that encodeURIComponent
+    // doesn't blow past Google Apps Script's ~8000 char URL limit.
+    // JSON chars like {}[]:, encode to 3 chars each, so 1500 raw ~ 4500 encoded — safe.
     const full = JSON.stringify(slim);
-    const CHUNK = 4000;
+    const CHUNK = 1500;
     const chunks = [];
     for(let i = 0; i < full.length; i += CHUNK){
       chunks.push(full.slice(i, i + CHUNK));
