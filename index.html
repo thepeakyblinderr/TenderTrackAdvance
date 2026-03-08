@@ -1328,22 +1328,38 @@ function toast(msg, err){
 const APPS_SCRIPT =
 `function doGet(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName('TenderData') || ss.insertSheet('TenderData');
-  var action = e.parameter.action || '';
+  var sh = ss.getSheetByName('TenderData');
+  if (!sh) sh = ss.insertSheet('TenderData');
+  var cb = e.parameter.cb || 'callback';
+  var action = e.parameter.action || 'read';
 
-  // PUSH: data sent as ?action=write&d=...
-  if (action === 'write') {
-    var d = e.parameter.d || '';
-    sh.getRange(1, 1).setValue(d);
-    var cb = e.parameter.cb || 'cb';
+  // Receive one chunk: store in row 2+i, store total in row 1 col 2
+  if (action === 'chunk') {
+    var i = parseInt(e.parameter.i || '0');
+    var total = e.parameter.total || '1';
+    sh.getRange(2 + i, 2).setValue(e.parameter.d || '');
+    sh.getRange(1, 2).setValue(total);
     return ContentService
       .createTextOutput(cb + '({"ok":true})')
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
 
-  // PULL: returns data wrapped in JSONP callback
+  // Commit: join all chunks into col 1 row 1, clear temp
+  if (action === 'commit') {
+    var total = parseInt(sh.getRange(1, 2).getValue() || '1');
+    var parts = [];
+    for (var i = 0; i < total; i++) {
+      parts.push(sh.getRange(2 + i, 2).getValue() || '');
+    }
+    sh.getRange(1, 1).setValue(parts.join(''));
+    sh.getRange(1, 2, total + 1, 1).clearContent();
+    return ContentService
+      .createTextOutput(cb + '({"ok":true})')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+
+  // Read: return full data from col 1 row 1
   var data = sh.getRange(1, 1).getValue() || '[]';
-  var cb = e.parameter.cb || 'cb';
   return ContentService
     .createTextOutput(cb + '(' + data + ')')
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
