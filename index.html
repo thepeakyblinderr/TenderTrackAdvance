@@ -1479,29 +1479,36 @@ function jsonp(url, cbName, timeout){
       if(done) return; done = true;
       delete window[id];
       const s = document.getElementById('_jsonp_'+id);
-      if(s) s.parentNode.removeChild(s);
+      if(s && s.parentNode) s.parentNode.removeChild(s);
       reject(new Error('timeout'));
-    }, timeout || 12000);
+    }, timeout || 15000);
 
     window[id] = function(data){
       if(done) return; done = true;
       clearTimeout(timer);
       delete window[id];
       const s = document.getElementById('_jsonp_'+id);
-      if(s) s.parentNode.removeChild(s);
+      if(s && s.parentNode) s.parentNode.removeChild(s);
       resolve(data);
     };
 
+    // Remove any stale script with same id first
+    const old = document.getElementById('_jsonp_'+id);
+    if(old && old.parentNode) old.parentNode.removeChild(old);
+
     const script = document.createElement('script');
     script.id = '_jsonp_' + id;
-    script.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + id;
     script.onerror = function(){
       if(done) return; done = true;
       clearTimeout(timer);
       delete window[id];
+      const s = document.getElementById('_jsonp_'+id);
+      if(s && s.parentNode) s.parentNode.removeChild(s);
       reject(new Error('script error'));
     };
-    document.head.appendChild(script);
+    // Set src AFTER adding onerror, append to body not head
+    script.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + id;
+    document.body.appendChild(script);
   });
 }
 
@@ -1549,7 +1556,11 @@ async function syncPush(){
     localStorage.setItem('tt_last_sync', Date.now().toString());
     setSyncDot('ok'); toast('Synced to cloud ✓');
   } catch(e){
-    setSyncDot('err'); toast('Push failed — check URL', true);
+    setSyncDot('err');
+    const msg = e.message === 'timeout' ? 'Push timed out — redeploy Apps Script' :
+                e.message === 'script error' ? 'Push blocked — check Apps Script URL' :
+                'Push failed: ' + e.message;
+    toast(msg, true);
     console.warn('Sync push error:', e.message);
   }
 }
@@ -1586,8 +1597,12 @@ async function syncPull(){
       setSyncDot('ok');
     }
   } catch(e){
-    setSyncDot('err'); toast('Pull failed — check URL', true);
-    console.warn('Sync pull error:', e);
+    setSyncDot('err');
+    const msg = e.message === 'timeout' ? 'Pull timed out — redeploy Apps Script' :
+                e.message === 'script error' ? 'Pull blocked — check Apps Script URL' :
+                'Pull failed: ' + e.message;
+    toast(msg, true);
+    console.warn('Sync pull error:', e.message);
   }
 }
 
