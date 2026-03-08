@@ -571,6 +571,7 @@ function confirmDeleteTender(id){
   expandedCards.delete(id);
   save(); render();
   toast('Tender deleted');
+  syncPush();
 }
 
 // ── ENTRY MODAL ───────────────────────────────────────
