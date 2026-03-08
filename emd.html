@@ -767,11 +767,12 @@ async function syncPush(){
     const chunks = [];
     for(let i = 0; i < full.length; i += CHUNK) chunks.push(full.slice(i, i+CHUNK));
     const total = chunks.length;
+    const pushId = Date.now();
     for(let i = 0; i < total; i++){
       const d = encodeURIComponent(chunks[i]);
-      await jsonp(syncUrl+'?action=chunk&i='+i+'&total='+total+'&d='+d, '_emd_chunk_'+i);
+      await jsonp(syncUrl+'?action=chunk&i='+i+'&total='+total+'&d='+d, '_emd_chunk_'+pushId+'_'+i);
     }
-    await jsonp(syncUrl+'?action=commit', '_emd_commit');
+    await jsonp(syncUrl+'?action=commit', '_emd_commit_'+pushId);
     localStorage.setItem('emd_last_sync', Date.now().toString());
     setSyncDot('ok'); toast('Synced to cloud ✓');
   } catch(e){
