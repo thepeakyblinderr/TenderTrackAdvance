@@ -1542,7 +1542,7 @@ async function syncPull(){
   if(!syncUrl) return;
   setSyncDot('busy');
   try{
-    const remote = await jsonp(syncUrl + '?action=read', '_tt_pull');
+    const remote = await jsonp(syncUrl + '?action=read', '_tt_pull_'+Date.now());
     const arr = Array.isArray(remote) ? remote : null;
     if(arr && arr.length > 0){
       // expand short keys back to full keys
