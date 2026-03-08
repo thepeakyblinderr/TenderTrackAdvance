@@ -1116,7 +1116,7 @@ function openDetail(id){
       '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(185,28,28,.15);'+
         'border:1px solid rgba(239,68,68,.4);border-radius:7px;padding:5px 11px;font-size:12px;'+
         'font-weight:600;color:#fca5a5;margin-bottom:12px">🔴 High Priority</div>':'')+
-    '<div class="detail-stages">'+
+    '<div class="detail-stages" id="detail-stages-'+t.id+'">'+
       t.stages.map(function(sid){
         const s = sg(sid);
         const age = stageAge(t, sid);
@@ -1124,7 +1124,13 @@ function openDetail(id){
           (age===0?'added today':age+'d ago')+'</span>' : '';
         return '<span style="display:inline-flex;align-items:center;gap:5px;background:'+s.color+'18;'+
           'border:1px solid '+s.color+'44;border-radius:6px;padding:4px 10px;font-size:11px;'+
-          'font-weight:600;color:'+s.color+';font-family:var(--mono)">'+s.label+ageStr+'</span>';
+          'font-weight:600;color:'+s.color+';font-family:var(--mono)">'+
+          s.label+ageStr+
+          '<button onclick="removeStageDetail(\''+t.id+'\','+sid+')" '+
+            'style="background:none;border:none;cursor:pointer;color:'+s.color+';opacity:.6;'+
+            'font-size:14px;line-height:1;padding:0 0 0 3px;display:flex;align-items:center;" '+
+            'title="Remove stage">×</button>'+
+          '</span>';
       }).join('')+
     '</div>'+
     actHtml+
@@ -1201,6 +1207,36 @@ function removeStage(id, sid){
   t.stages = t.stages.filter(function(s){ return s!==sid; });
   if(t.stageEnteredAt) delete t.stageEnteredAt[sid];
   save(); render(); buildChips(t); toast('Stage removed');
+  syncPush();
+}
+
+function removeStageDetail(id, sid){
+  const t = tenders.find(function(x){ return x.id===id; });
+  if(!t) return;
+  if(t.stages.length <= 1){ toast('Cannot remove last stage', true); return; }
+  t.stages = t.stages.filter(function(s){ return s!==sid; });
+  if(t.stageEnteredAt) delete t.stageEnteredAt[sid];
+  save(); render();
+  // Refresh just the stages section inside the open detail modal
+  const container = document.getElementById('detail-stages-'+id);
+  if(container){
+    const s_list = t.stages.map(function(sid2){
+      const s = sg(sid2);
+      const age = stageAge(t, sid2);
+      const ageStr = age!==null ? ' <span style="font-size:9px;opacity:.6;font-weight:400">'+(age===0?'added today':age+'d ago')+'</span>' : '';
+      return '<span style="display:inline-flex;align-items:center;gap:5px;background:'+s.color+'18;'+
+        'border:1px solid '+s.color+'44;border-radius:6px;padding:4px 10px;font-size:11px;'+
+        'font-weight:600;color:'+s.color+';font-family:var(--mono)">'+
+        s.label+ageStr+
+        '<button onclick="removeStageDetail(\''+id+'\','+sid2+')" '+
+          'style="background:none;border:none;cursor:pointer;color:'+s.color+';opacity:.6;'+
+          'font-size:14px;line-height:1;padding:0 0 0 3px;display:flex;align-items:center;" '+
+          'title="Remove stage">×</button>'+
+        '</span>';
+    });
+    container.innerHTML = s_list.join('');
+  }
+  toast('Stage removed');
   syncPush();
 }
 
