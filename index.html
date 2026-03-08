@@ -1520,15 +1520,16 @@ async function syncPush(){
     }
     const total = chunks.length;
 
-    // Send each chunk: action=chunk&i=0&total=3&d=...
+    // Send each chunk — use timestamp-unique cb names to avoid conflicts on repeat pushes
+    const pushId = Date.now();
     for(let i = 0; i < total; i++){
       const d = encodeURIComponent(chunks[i]);
       const url = syncUrl + '?action=chunk&i='+i+'&total='+total+'&d='+d;
-      await jsonp(url, '_tt_chunk_'+i);
+      await jsonp(url, '_tt_chunk_'+pushId+'_'+i);
     }
 
     // Signal write complete
-    await jsonp(syncUrl + '?action=commit', '_tt_commit');
+    await jsonp(syncUrl + '?action=commit', '_tt_commit_'+pushId);
     localStorage.setItem('tt_last_sync', Date.now().toString());
     setSyncDot('ok'); toast('Synced to cloud ✓');
   } catch(e){
