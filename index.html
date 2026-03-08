@@ -44,23 +44,24 @@ header{position:sticky;top:0;z-index:50;
   transition:background .2s,border-color .2s,box-shadow .2s;}
 [data-theme="dark"] header{background:rgba(6,10,18,.9);box-shadow:0 1px 30px rgba(0,0,0,.6),0 1px 0 rgba(59,158,255,.08);}
 [data-theme="light"] header{background:rgba(238,242,249,.92);box-shadow:0 1px 16px rgba(0,0,0,.08);}
-.hdr{display:flex;align-items:center;height:56px;gap:8px;}
-.brand{display:flex;align-items:center;gap:9px;flex-shrink:0;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);letter-spacing:.3px;}
-.brand-pip{width:28px;height:28px;border-radius:9px;
+.hdr-row1{display:flex;align-items:center;height:48px;gap:8px;}
+.hdr-row2{display:flex;align-items:center;height:40px;gap:6px;padding-bottom:6px;}
+.brand{display:flex;align-items:center;gap:9px;flex:1;min-width:0;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);letter-spacing:.3px;}
+.brand-pip{width:26px;height:26px;border-radius:8px;flex-shrink:0;
   background:linear-gradient(135deg,#1565e0,#3b9eff);
-  display:flex;align-items:center;justify-content:center;font-size:14px;
-  box-shadow:0 0 16px rgba(59,158,255,.5),inset 0 1px 0 rgba(255,255,255,.25);}
+  display:flex;align-items:center;justify-content:center;font-size:13px;
+  box-shadow:0 0 14px rgba(59,158,255,.5),inset 0 1px 0 rgba(255,255,255,.25);}
 .hdr-search{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border2);
-  border-radius:12px;padding:9px 14px;color:var(--text);font-family:var(--sans);font-size:14px;outline:none;-webkit-appearance:none;
+  border-radius:10px;padding:8px 13px;color:var(--text);font-family:var(--sans);font-size:14px;outline:none;-webkit-appearance:none;
   transition:border-color .15s,box-shadow .15s,background .2s;}
 .hdr-search:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow);}
 .hdr-search::placeholder{color:var(--dim);}
-.btn-theme{width:34px;height:34px;border-radius:10px;border:1px solid var(--border2);background:var(--surface);
-  cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;
+.btn-theme{width:32px;height:32px;border-radius:9px;border:1px solid var(--border2);background:var(--surface);
+  cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px;
   transition:background .2s,border-color .2s;-webkit-appearance:none;}
 .btn-theme:active{transform:scale(.9);}
 .btn-emd{display:flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--border2);
-  border-radius:10px;padding:8px 11px;color:var(--dim);font-family:var(--sans);font-size:12px;font-weight:600;
+  border-radius:9px;padding:7px 10px;color:var(--dim);font-family:var(--sans);font-size:12px;font-weight:600;
   cursor:pointer;white-space:nowrap;flex-shrink:0;text-decoration:none;transition:all .15s;}
 .btn-emd:hover{color:#34d399;border-color:rgba(52,211,153,.4);}
 
@@ -71,13 +72,13 @@ header{position:sticky;top:0;z-index:50;
 .sync-dot.err{background:#f87171;box-shadow:0 0 6px #f8717177;}
 .sync-dot.busy{background:#fbbf24;box-shadow:0 0 6px #fbbf2477;animation:pulse .8s infinite;}
 .btn-sync{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border2);
-  border-radius:10px;padding:8px 11px;color:var(--dim);font-family:var(--sans);font-size:12px;font-weight:500;
+  border-radius:9px;padding:7px 11px;color:var(--dim);font-family:var(--sans);font-size:12px;font-weight:500;
   cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none;transition:border-color .15s,background .2s;}
 .btn-sync.ok{color:var(--accent);border-color:rgba(59,158,255,.4);}
 
 /* Today btn */
 .btn-today{position:relative;background:var(--surface);border:1px solid var(--border2);
-  border-radius:10px;padding:8px 13px;color:var(--dim);font-family:var(--sans);font-size:13px;font-weight:600;
+  border-radius:9px;padding:7px 13px;color:var(--dim);font-family:var(--sans);font-size:13px;font-weight:600;
   cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none;transition:all .15s,background .2s;}
 .btn-today.lit{color:var(--accent);border-color:rgba(59,158,255,.5);box-shadow:0 0 14px rgba(59,158,255,.15);}
 .today-badge{position:absolute;top:-5px;right:-5px;background:var(--accent);color:#fff;
@@ -85,9 +86,9 @@ header{position:sticky;top:0;z-index:50;
 .btn-today.lit .today-badge{display:block;}
 
 .btn-add{background:linear-gradient(135deg,#1255cc,#3b9eff);border:1px solid rgba(59,158,255,.3);
-  border-radius:10px;padding:9px 15px;color:#fff;font-family:var(--sans);font-size:13px;font-weight:600;
-  cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none;
-  box-shadow:0 2px 16px rgba(139,92,246,.35);transition:box-shadow .15s;}
+  border-radius:9px;padding:8px 16px;color:#fff;font-family:var(--sans);font-size:13px;font-weight:600;
+  cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none;margin-left:auto;
+  box-shadow:0 2px 12px rgba(59,158,255,.3);transition:box-shadow .15s;}
 
 /* MAIN */
 main{padding:16px;padding-bottom:calc(30px + var(--safe-bot));}
@@ -356,18 +357,20 @@ textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
 <body>
 
 <header>
-  <div class="hdr">
+  <div class="hdr-row1">
     <div class="brand"><div class="brand-pip">📋</div>TenderTrack</div>
-    <input class="hdr-search" id="search" placeholder="Search…" oninput="render()">
     <button class="btn-theme" id="btn-theme" onclick="toggleTheme()" title="Toggle theme">🌙</button>
-    <a class="btn-emd" href="emd.html" title="EMD Tracker">💰 EMD</a>
+    <a class="btn-emd" href="emd.html">💰 EMD</a>
+    <button class="btn-add" onclick="openAdd()">+ Add</button>
+  </div>
+  <div class="hdr-row2">
+    <input class="hdr-search" id="search" placeholder="Search tender or amount…" oninput="render()">
     <button class="btn-sync" id="btn-sync" onclick="openSync()">
       <span class="sync-dot" id="sync-dot"></span>Sync
     </button>
     <button class="btn-today" id="btn-today" onclick="openActions()">
       Today<span class="today-badge" id="today-badge">0</span>
     </button>
-    <button class="btn-add" onclick="openAdd()">+ Add</button>
   </div>
 </header>
 
