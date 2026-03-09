@@ -576,7 +576,6 @@ const STAGES = [
 const KEY = 'tt_v11';
 const SNOOZE_KEY = 'tt_snooze';
 const SYNC_KEY = 'tt_sync_url';
-const CSV_KEY  = 'tt_csv_url';
 const FU_KEY = 'tt_followup';
 
 let tenders = [];
@@ -584,7 +583,6 @@ let editId = null;
 let fuId = null;
 let pFilter = '';
 let syncUrl = localStorage.getItem(SYNC_KEY) || '';
-let csvUrl  = localStorage.getItem(CSV_KEY)  || '';
 
 // ── HELPERS ───────────────────────────────────────────
 function sg(id){ return STAGES.find(s => s.id === id) || STAGES[0]; }
@@ -1330,34 +1328,31 @@ function toast(msg, err){
 // and returning JSONP for pull — both bypass CORS entirely.
 const APPS_SCRIPT =
 `function doGet(e) {
-  var cb = (e.parameter.cb || 'cb');
-  var action = (e.parameter.action || 'read');
-  var ps = PropertiesService.getScriptProperties();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName('TenderData');
+  if (!sh) sh = ss.insertSheet('TenderData');
+  var cb = e.parameter.cb || 'callback';
+  var action = e.parameter.action || 'read';
 
-  // Write chunk into script properties (fast, no sheet read/write)
   if (action === 'chunk') {
-    ps.setProperty('chunk_' + (e.parameter.i || '0'), e.parameter.d || '');
-    ps.setProperty('chunk_total', e.parameter.total || '1');
+    var i = parseInt(e.parameter.i || '0');
+    sh.getRange(2 + i, 2).setValue(e.parameter.d || '');
+    sh.getRange(1, 2).setValue(e.parameter.total || '1');
     return ContentService.createTextOutput(cb + '({"ok":true})').setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
 
-  // Commit: join chunks and save as final data
   if (action === 'commit') {
-    var total = parseInt(ps.getProperty('chunk_total') || '1');
+    var total = parseInt(sh.getRange(1, 2).getValue() || '1');
     var parts = [];
-    for (var i = 0; i < total; i++) parts.push(ps.getProperty('chunk_' + i) || '');
-    var json = parts.join('');
-    ps.setProperty('data', json);
-    // Clean up chunk keys
-    for (var i = 0; i < total; i++) ps.deleteProperty('chunk_' + i);
-    ps.deleteProperty('chunk_total');
+    for (var i = 0; i < total; i++) parts.push(sh.getRange(2 + i, 2).getValue() || '');
+    sh.getRange(1, 1).setValue(parts.join(''));
+    sh.getRange(1, 2, total + 1, 1).clearContent();
     return ContentService.createTextOutput(cb + '({"ok":true})').setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
 
-  // Read: return data from properties (fast)
-  var data = ps.getProperty('data') || '[]';
+  var data = sh.getRange(1, 1).getValue() || '[]';
   return ContentService.createTextOutput(cb + '(' + data + ')').setMimeType(ContentService.MimeType.JAVASCRIPT);
-}`
+}`;
 
 function setSyncDot(state){
   const dot = document.getElementById('sync-dot');
@@ -1442,11 +1437,6 @@ function saveSync(){
   if(!val.includes('script.google.com')){ toast('URL should be from script.google.com', true); return; }
   syncUrl = val;
   localStorage.setItem(SYNC_KEY, syncUrl);
-  const csvInp = document.getElementById('csv-url-input');
-  if(csvInp && csvInp.value.trim()){
-    csvUrl = csvInp.value.trim();
-    localStorage.setItem(CSV_KEY, csvUrl);
-  }
   toast('Connected ✓');
   closeM('modal-sync');
   syncPull();
@@ -1455,9 +1445,8 @@ function saveSync(){
 function disconnectSync(){
   const btn = document.getElementById('btn-disconnect');
   if(btn && btn.dataset.armed === '1'){
-    syncUrl = ''; csvUrl = '';
+    syncUrl = '';
     localStorage.removeItem(SYNC_KEY);
-    localStorage.removeItem(CSV_KEY);
     localStorage.removeItem('tt_last_sync');
     setSyncDot('idle');
     closeM('modal-sync');
