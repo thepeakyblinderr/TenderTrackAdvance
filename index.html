@@ -773,17 +773,18 @@ function getActions(t){
   if(sd !== null){
     if(sd < 0 && stages.includes(0))
       push('followup', '➡️', 'Sale has ended — move to next stage', 'Still in Sale End Awaited');
-    else
+    else if(sd >= 0)
       dateActions(sd, '📌', 'Sale End', fmt(t.saleEnd)||'');
   }
 
-  // Tech bid opening
+  // Tech bid opening — only show if expired AND still in relevant stage, skip if moved on
   const td = daysLeft(t.techBid);
   if(td !== null){
     if(td < 0 && stages.includes(1))
       push('followup', '➡️', 'Tech Bid Opening date passed', 'Update stage to TBA and CBA at My End');
-    else
+    else if(td >= 0)
       dateActions(td, '🔓', 'Tech Bid Opening', fmt(t.techBid)||'');
+    // if td < 0 and not in stage 1 — already moved on, don't show
   }
 
   // Price bid opening
@@ -791,7 +792,7 @@ function getActions(t){
   if(pd !== null){
     if(pd < 0 && (stages.includes(6)||stages.includes(7)))
       push('followup', '➡️', 'Price Bid Opening date passed', 'Update stage accordingly');
-    else
+    else if(pd >= 0)
       dateActions(pd, '💰', 'Price Bid Opening', fmt(t.priceBid)||'');
   }
 
@@ -800,7 +801,7 @@ function getActions(t){
   if(rd !== null){
     if(rd < 0 && stages.includes(8))
       push('followup', '➡️', 'Reverse Auction date passed', 'Update to next workflow stage');
-    else
+    else if(rd >= 0)
       dateActions(rd, '🔄', 'Reverse Auction', fmt(t.ra)||'');
   }
 
