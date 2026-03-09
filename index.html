@@ -1352,6 +1352,20 @@ const APPS_SCRIPT =
 
   var data = sh.getRange(1, 1).getValue() || '[]';
   return ContentService.createTextOutput(cb + '(' + data + ')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+// Run this once manually to set up the keep-warm trigger:
+// In Apps Script editor → Run → keepWarm  (do this after deploying)
+function keepWarm() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  ss.getSheetByName('TenderData') || ss.insertSheet('TenderData');
+}
+
+function setupTrigger() {
+  // Delete existing triggers first
+  ScriptApp.getProjectTriggers().forEach(function(t){ ScriptApp.deleteTrigger(t); });
+  // Run keepWarm every 5 minutes to prevent cold starts
+  ScriptApp.newTrigger('keepWarm').timeBased().everyMinutes(5).create();
 }`;
 
 function setSyncDot(state){
