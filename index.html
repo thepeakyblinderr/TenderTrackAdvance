@@ -1333,7 +1333,7 @@ const APPS_SCRIPT =
   var cb = e.parameter.cb || 'callback';
   var action = e.parameter.action || 'read';
 
-  // Receive one chunk: store in row 2+i, store total in row 1 col 2
+  // Receive one chunk
   if (action === 'chunk') {
     var i = parseInt(e.parameter.i || '0');
     var total = e.parameter.total || '1';
@@ -1344,7 +1344,7 @@ const APPS_SCRIPT =
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
 
-  // Commit: join all chunks into col 1 row 1, clear temp
+  // Commit chunks into final cell
   if (action === 'commit') {
     var total = parseInt(sh.getRange(1, 2).getValue() || '1');
     var parts = [];
@@ -1358,8 +1358,15 @@ const APPS_SCRIPT =
       .setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
 
-  // Read: return full data from col 1 row 1
+  // Read — return JSON with CORS header so fetch() works too
   var data = sh.getRange(1, 1).getValue() || '[]';
+  if (action === 'fetchread') {
+    return ContentService
+      .createTextOutput(data)
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  // Default: JSONP
   return ContentService
     .createTextOutput(cb + '(' + data + ')')
     .setMimeType(ContentService.MimeType.JAVASCRIPT);
@@ -1565,14 +1572,22 @@ async function syncPush(){
   }
 }
 
-async function syncPull(attempt){
+async function syncPull(){
   if(!syncUrl) return;
   setSyncDot('busy');
   try{
-    const remote = await jsonp(syncUrl + '?action=read', '_tt_pull_'+Date.now());
-    const arr = Array.isArray(remote) ? remote : null;
-    if(arr && arr.length > 0){
-      // expand short keys back to full keys
+    // Use fetch() — faster and more reliable than JSONP for reads
+    const controller = new AbortController();
+    const timer = setTimeout(()=>controller.abort(), 35000);
+    const res = await fetch(syncUrl + '?action=fetchread', {signal: controller.signal});
+    clearTimeout(timer);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    // Apps Script may redirect; the final response text is the JSON
+    // Strip any JSONP wrapper if present
+    const clean = text.trim().replace(/^[^[{]*/, '').replace(/[^}\]]*$/, '');
+    const arr = JSON.parse(clean);
+    if(Array.isArray(arr) && arr.length > 0){
       tenders = arr.map(function(t){
         return {
           id:             t.id,
@@ -1597,17 +1612,41 @@ async function syncPull(attempt){
       setSyncDot('ok');
     }
   } catch(e){
-    if(e.message === 'timeout' && !attempt){
-      toast('Pull slow — retrying…');
-      setTimeout(function(){ syncPull(1); }, 2000);
-      return;
+    // fetch failed — fall back to JSONP
+    try{
+      const remote = await jsonp(syncUrl + '?action=read', '_tt_pull_'+Date.now());
+      const arr = Array.isArray(remote) ? remote : null;
+      if(arr && arr.length > 0){
+        tenders = arr.map(function(t){
+          return {
+            id:             t.id,
+            no:             t.no,
+            stages:         t.stages || [],
+            stageEnteredAt: t.sea || t.stageEnteredAt || {},
+            priority:       t.p   || t.priority || '',
+            notes:          t.n   || t.notes    || '',
+            emd:            t.e   || t.emd      || '',
+            saleEnd:        t.s   || t.saleEnd  || '',
+            techBid:        t.tb  || t.techBid  || '',
+            priceBid:       t.pb  || t.priceBid || '',
+            ra:             t.ra  || '',
+            validity:       t.v   || t.validity || '',
+            tcq:            t.q   || t.tcq      || '',
+          };
+        });
+        save(); render();
+        localStorage.setItem('tt_last_sync', Date.now().toString());
+        setSyncDot('ok'); toast('Pulled from cloud ✓');
+      } else {
+        setSyncDot('ok');
+      }
+    } catch(e2){
+      setSyncDot('err');
+      const msg = e2.message === 'timeout' ? 'Pull timed out — Apps Script too slow' :
+                  'Pull failed: ' + e2.message;
+      toast(msg, true);
+      console.warn('Sync pull error:', e.message, e2.message);
     }
-    setSyncDot('err');
-    const msg = e.message === 'timeout' ? 'Pull timed out — Apps Script too slow' :
-                e.message === 'script error' ? 'Pull blocked — check Apps Script URL' :
-                'Pull failed: ' + e.message;
-    toast(msg, true);
-    console.warn('Sync pull error:', e.message);
   }
 }
 
