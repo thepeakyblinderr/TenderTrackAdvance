@@ -1353,20 +1353,7 @@ const APPS_SCRIPT =
   var data = sh.getRange(1, 1).getValue() || '[]';
   return ContentService.createTextOutput(cb + '(' + data + ')').setMimeType(ContentService.MimeType.JAVASCRIPT);
 }
-
-// Run this once manually to set up the keep-warm trigger:
-// In Apps Script editor → Run → keepWarm  (do this after deploying)
-function keepWarm() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  ss.getSheetByName('TenderData') || ss.insertSheet('TenderData');
-}
-
-function setupTrigger() {
-  // Delete existing triggers first
-  ScriptApp.getProjectTriggers().forEach(function(t){ ScriptApp.deleteTrigger(t); });
-  // Run keepWarm every 5 minutes to prevent cold starts
-  ScriptApp.newTrigger('keepWarm').timeBased().everyMinutes(5).create();
-}`;
+`;
 
 function setSyncDot(state){
   const dot = document.getElementById('sync-dot');
@@ -1561,9 +1548,10 @@ async function syncPush(){
   }
 }
 
-async function syncPull(){
+async function syncPull(attempt){
+  attempt = attempt || 1;
   if(!syncUrl) return;
-  setSyncDot('busy');
+  if(attempt === 1) setSyncDot('busy');
   function expand(t){
     return {
       id:t.id, no:t.no,
@@ -1592,9 +1580,15 @@ async function syncPull(){
       setSyncDot('ok');
     }
   } catch(e){
+    if(attempt < 3){
+      // Auto-retry — script may be cold starting
+      toast('Pull slow, retrying ('+attempt+'/3)…');
+      setTimeout(function(){ syncPull(attempt + 1); }, 5000);
+      return;
+    }
     setSyncDot('err');
-    const msg = e.message === 'timeout' ? 'Pull timed out — redeploy Apps Script' :
-                e.message === 'script error' ? 'Pull blocked — check Apps Script URL' :
+    const msg = e.message === 'timeout' ? 'Pull timed out after 3 tries. Try again in a moment.' :
+                e.message === 'script error' ? 'Pull failed — check Apps Script URL' :
                 'Pull failed: ' + e.message;
     toast(msg, true);
     console.warn('Sync pull error:', e.message);
