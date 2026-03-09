@@ -1481,7 +1481,7 @@ function jsonp(url, cbName, timeout){
       const s = document.getElementById('_jsonp_'+id);
       if(s && s.parentNode) s.parentNode.removeChild(s);
       reject(new Error('timeout'));
-    }, timeout || 15000);
+    }, timeout || 30000);
 
     window[id] = function(data){
       if(done) return; done = true;
@@ -1565,7 +1565,7 @@ async function syncPush(){
   }
 }
 
-async function syncPull(){
+async function syncPull(attempt){
   if(!syncUrl) return;
   setSyncDot('busy');
   try{
@@ -1597,8 +1597,13 @@ async function syncPull(){
       setSyncDot('ok');
     }
   } catch(e){
+    if(e.message === 'timeout' && !attempt){
+      toast('Pull slow — retrying…');
+      setTimeout(function(){ syncPull(1); }, 2000);
+      return;
+    }
     setSyncDot('err');
-    const msg = e.message === 'timeout' ? 'Pull timed out — redeploy Apps Script' :
+    const msg = e.message === 'timeout' ? 'Pull timed out — Apps Script too slow' :
                 e.message === 'script error' ? 'Pull blocked — check Apps Script URL' :
                 'Pull failed: ' + e.message;
     toast(msg, true);
