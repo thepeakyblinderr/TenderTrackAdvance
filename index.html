@@ -549,31 +549,40 @@ function toggleTheme(){
 
 // ── DATA ──────────────────────────────────────────────
 const STAGES = [
-  {id:19, label:'Under Preparation',           color:'#7dd3fc'},
-  {id:0,  label:'Sale End Awaited',            color:'#94a3b8'},
-  {id:1,  label:'Technical Bid Opening',       color:'#60a5fa'},
-  {id:2,  label:'Tech Bid Analysis Awaited',   color:'#93c5fd'},
-  {id:3,  label:'TBA and CBA at My End',       color:'#38bdf8'},
-  {id:22, label:'Under TCQ',                  color:'#fb923c'},
-  {id:4,  label:'Commercial Checking Awaited', color:'#c084fc'},
-  {id:5,  label:'AF Approval Pending',         color:'#fbbf24'},
-  {id:6,  label:'Price Bid Opening Proposal',  color:'#fb923c'},
-  {id:7,  label:'Price Opening Date Set',      color:'#f472b6'},
-  {id:8,  label:'Reverse Auction Date Set',    color:'#34d399'},
-  {id:9,  label:'Under CS Checking',           color:'#2dd4bf'},
-  {id:10, label:'Reasonability / Workability', color:'#f87171'},
-  {id:11, label:'Under Negotiation Approval',  color:'#fde68a'},
-  {id:12, label:'Under WO Verification',       color:'#86efac'},
-  {id:13, label:'Under Price Matching',        color:'#e879f9'},
-  {id:14, label:'Proposal for Award',          color:'#fb7185'},
-  {id:16, label:'AOC Pending',                 color:'#3b9eff'},
-  {id:17, label:'Agreement Pending',           color:'#6ee7b7'},
-  {id:20, label:'Under Tender Cancellation',   color:'#f97316'},
-  {id:21, label:'SAP Release Pending',         color:'#fde68a'},
-  {id:18, label:'Others',                      color:'#475569'},
+  {id:0 , label:'PR Received Under Scrutiny',                            color:'#94a3b8'},
+  {id:1 , label:'PR Observation Sent / Marked for Discrepancies',        color:'#f472b6'},
+  {id:2 , label:'Tender Under Prep',                                     color:'#7dd3fc'},
+  {id:3 , label:'Tender Under Approval',                                 color:'#60a5fa'},
+  {id:4 , label:'Tender on Sale',                                        color:'#38bdf8'},
+  {id:5 , label:'Under Technical Evaluation',                            color:'#93c5fd'},
+  {id:6 , label:'Offers Under Evaluation in Contract Cell',              color:'#c084fc'},
+  {id:7 , label:'TR Observations Sent for Review',                       color:'#fbbf24'},
+  {id:8 , label:'TCQ Under Preparation',                                 color:'#fb923c'},
+  {id:9 , label:'Under TCQ',                                             color:'#fb923c'},
+  {id:10, label:'FTR Awaited',                                           color:'#2dd4bf'},
+  {id:11, label:'CBA Checking',                                          color:'#38bdf8'},
+  {id:12, label:'TC / Proposal for PBO Under Preparation',               color:'#f87171'},
+  {id:13, label:'TC / Proposal for PBO Put Up',                          color:'#fde68a'},
+  {id:14, label:'Evaluation Freezed e-Tender/GeM. PBO Scheduled',        color:'#34d399'},
+  {id:15, label:'Price Bid Opened. Under Reverse Auction',               color:'#4ade80'},
+  {id:16, label:'Price Bids Opened. Under Estimate Review',              color:'#86efac'},
+  {id:17, label:'Price Negotiation Approval Put Up',                     color:'#fbbf24'},
+  {id:18, label:'Price Workability Awaited from Indenter',               color:'#fb7185'},
+  {id:19, label:'Price Workability Awaited from Bidder',                 color:'#f97316'},
+  {id:20, label:'Price Reasonability Awaited',                           color:'#e879f9'},
+  {id:21, label:'Under Price Matching',                                  color:'#e879f9'},
+  {id:22, label:'Under Document Verification',                           color:'#6ee7b7'},
+  {id:23, label:'CS Checking',                                           color:'#2dd4bf'},
+  {id:24, label:'TC / Proposal for Award Under Preparation',             color:'#3b9eff'},
+  {id:25, label:'TC / Proposal for Award Put Up',                        color:'#60a5fa'},
+  {id:26, label:'LOA Under Prep',                                        color:'#86efac'},
+  {id:27, label:'SAP Release Pending',                                   color:'#fde68a'},
+  {id:28, label:'AOC Pending',                                           color:'#3b9eff'},
+  {id:29, label:'Tender Cancellation Approval Put Up',                   color:'#f97316'},
+  {id:30, label:'Others',                                                color:'#475569'},
 ];
 
-const KEY = 'tt_v11';
+const KEY = 'tt_v12';
 const SNOOZE_KEY = 'tt_snooze';
 const SYNC_KEY = 'tt_sync_url';
 const FU_KEY = 'tt_followup';
@@ -686,20 +695,35 @@ function clearFollowUp(){
 // ── STORAGE ───────────────────────────────────────────
 function load(){
   try {
-    // Migrate from v9 if v10 is empty
     let raw = localStorage.getItem(KEY);
     if(!raw) {
-      const old = localStorage.getItem('tt_v10') || localStorage.getItem('tt_v9');
-      if(old) raw = old;
+      // Migrate from tt_v11 (old stages) to tt_v12 (new stages)
+      const oldRaw = localStorage.getItem('tt_v11') || localStorage.getItem('tt_v10') || localStorage.getItem('tt_v9');
+      if(oldRaw){
+        const oldMap = {19:2, 0:4, 1:5, 2:5, 3:11, 22:9, 4:6, 5:3, 6:13, 7:14,
+                        8:15, 9:23, 10:20, 11:17, 12:22, 13:21, 14:24, 15:14,
+                        16:28, 17:26, 18:30, 20:29, 21:27};
+        const old = JSON.parse(oldRaw);
+        old.forEach(function(t){
+          if(t.stages){
+            t.stages = t.stages.map(function(s){ return oldMap[s] !== undefined ? oldMap[s] : 30; });
+            // deduplicate
+            t.stages = t.stages.filter(function(v,i,a){ return a.indexOf(v)===i; });
+          }
+          if(t.stageEnteredAt){
+            const newSea = {};
+            Object.keys(t.stageEnteredAt).forEach(function(k){
+              const nk = oldMap[+k];
+              if(nk !== undefined) newSea[nk] = t.stageEnteredAt[k];
+            });
+            t.stageEnteredAt = newSea;
+          }
+        });
+        raw = JSON.stringify(old);
+        localStorage.setItem(KEY, raw);
+      }
     }
     tenders = JSON.parse(raw || '[]');
-    // Migration: remove stage 15 (Bid Validity Expiring Soon — now redundant)
-    tenders.forEach(function(t){
-      if(t.stages && t.stages.includes(15)){
-        t.stages = t.stages.filter(function(s){ return s !== 15; });
-        if(t.stageEnteredAt) delete t.stageEnteredAt[15];
-      }
-    });
   } catch(e) { tenders = []; }
 }
 function save(){ localStorage.setItem(KEY, JSON.stringify(tenders)); }
@@ -771,7 +795,7 @@ function getActions(t){
   // Sale end
   const sd = daysLeft(t.saleEnd);
   if(sd !== null){
-    if(sd < 0 && stages.includes(0))
+    if(sd < 0 && stages.includes(4))
       push('followup', '➡️', 'Sale has ended — move to next stage', 'Still in Sale End Awaited');
     else if(sd >= 0)
       dateActions(sd, '📌', 'Sale End', fmt(t.saleEnd)||'');
@@ -780,7 +804,7 @@ function getActions(t){
   // Tech bid opening — only show if expired AND still in relevant stage, skip if moved on
   const td = daysLeft(t.techBid);
   if(td !== null){
-    if(td < 0 && stages.includes(1))
+    if(td < 0 && stages.includes(5))
       push('followup', '➡️', 'Tech Bid Opening date passed', 'Update stage to TBA and CBA at My End');
     else if(td >= 0)
       dateActions(td, '🔓', 'Tech Bid Opening', fmt(t.techBid)||'');
@@ -790,7 +814,7 @@ function getActions(t){
   // Price bid opening
   const pd = daysLeft(t.priceBid);
   if(pd !== null){
-    if(pd < 0 && (stages.includes(6)||stages.includes(7)))
+    if(pd < 0 && (stages.includes(13)||stages.includes(14)))
       push('followup', '➡️', 'Price Bid Opening date passed', 'Update stage accordingly');
     else if(pd >= 0)
       dateActions(pd, '💰', 'Price Bid Opening', fmt(t.priceBid)||'');
@@ -799,7 +823,7 @@ function getActions(t){
   // Reverse auction
   const rd = daysLeft(t.ra);
   if(rd !== null){
-    if(rd < 0 && stages.includes(8))
+    if(rd < 0 && stages.includes(15))
       push('followup', '➡️', 'Reverse Auction date passed', 'Update to next workflow stage');
     else if(rd >= 0)
       dateActions(rd, '🔄', 'Reverse Auction', fmt(t.ra)||'');
@@ -811,13 +835,20 @@ function getActions(t){
 
   // Stage nudges (snoozeable)
   const nudges = [
-    {sid:5,  icon:'📋', msg:'AF Approval Pending — follow up',     sub:'Check with approving authority for status'},
-    {sid:9,  icon:'🔍', msg:'Under CS Checking — follow up',        sub:'Check status of CS checking'},
-    {sid:10, icon:'🔍', msg:'Reasonability/Workability check due',  sub:'Ensure cost analysis is submitted'},
-    {sid:11, icon:'🤝', msg:'Negotiation Approval pending',         sub:'Follow up with negotiation committee'},
-    {sid:12, icon:'📝', msg:'WO Verification in progress',          sub:'Check if work order document is ready'},
-    {sid:13, icon:'🔀', msg:'Under Price Matching — action needed', sub:'Review and finalise price comparison'},
-    {sid:14, icon:'🏆', msg:'Proposal for Award — action needed',   sub:'Review and proceed with award decision'},
+    {sid:3,  icon:'✅', msg:'Tender Under Approval — follow up',        sub:'Check approval status with authority'},
+    {sid:7,  icon:'📋', msg:'TR Observations Sent — awaiting response', sub:'Follow up on technical review observations'},
+    {sid:8,  icon:'📝', msg:'TCQ Under Preparation — action needed',    sub:'Ensure TCQ document is being prepared'},
+    {sid:10, icon:'📬', msg:'FTR Awaited — follow up',                  sub:'Chase final technical review from indenter'},
+    {sid:11, icon:'🔍', msg:'CBA Checking in progress',                 sub:'Check status of CBA checking'},
+    {sid:17, icon:'🤝', msg:'Price Negotiation Approval Put Up',        sub:'Follow up with negotiation committee'},
+    {sid:18, icon:'⏳', msg:'Price Workability Awaited from Indenter',  sub:'Chase workability certificate from indenter'},
+    {sid:19, icon:'⏳', msg:'Price Workability Awaited from Bidder',    sub:'Chase workability certificate from bidder'},
+    {sid:20, icon:'🔍', msg:'Price Reasonability Awaited',              sub:'Follow up on price reasonability certificate'},
+    {sid:21, icon:'🔀', msg:'Under Price Matching — action needed',     sub:'Review and finalise price comparison'},
+    {sid:23, icon:'🔍', msg:'CS Checking in progress — follow up',      sub:'Check status of CS checking'},
+    {sid:24, icon:'🏆', msg:'TC/Proposal for Award Under Prep',         sub:'Ensure award proposal is being prepared'},
+    {sid:25, icon:'🏆', msg:'TC/Proposal for Award Put Up',             sub:'Follow up on award decision'},
+    {sid:26, icon:'📄', msg:'LOA Under Prep — follow up',               sub:'Check LOA preparation status'},
     {sid:16, icon:'📜', msg:'AOC Pending — follow up',              sub:'Coordinate acceptance of contract'},
     {sid:17, icon:'✍️', msg:'Agreement Pending — follow up',        sub:'Ensure agreement is signed and filed'},
   ];
@@ -854,7 +885,7 @@ function getActions(t){
 function refreshBadge(){
   let todayCount = 0, total = 0;
   tenders.forEach(function(t){
-    if(t.stages && t.stages.length===1 && t.stages[0]===18) return;
+    if(t.stages && t.stages.length===1 && t.stages[0]===30) return;
     getActions(t).forEach(function(a){
       total++;
       if(a.bucket==='today') todayCount++;
@@ -877,7 +908,7 @@ function buildActionsModal(){
 
   const allItems = [];
   tenders.forEach(function(t){
-    if(t.stages && t.stages.length===1 && t.stages[0]===18) return;
+    if(t.stages && t.stages.length===1 && t.stages[0]===30) return;
     getActions(t).forEach(function(a){ allItems.push({a:a, t:t}); });
   });
 
