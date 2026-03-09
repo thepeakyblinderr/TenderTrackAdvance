@@ -195,6 +195,7 @@ main{padding:16px;padding-bottom:calc(30px + var(--safe-bot));}
   box-shadow:0 -16px 60px rgba(0,0,0,.7),0 -1px 0 rgba(59,158,255,.1);}
 .overlay.open .modal{transform:translateY(0);}
 .modal::-webkit-scrollbar{width:0;}
+.mfoot{position:sticky;bottom:0;background:var(--card);padding-top:12px;margin-top:8px;}
 .modal::before{content:'';display:block;width:40px;height:4px;border-radius:2px;
   background:var(--border2);margin:0 auto 20px;}
 .mh{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
@@ -1329,44 +1330,34 @@ function toast(msg, err){
 // and returning JSONP for pull — both bypass CORS entirely.
 const APPS_SCRIPT =
 `function doGet(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName('TenderData');
-  if (!sh) sh = ss.insertSheet('TenderData');
-  var cb = e.parameter.cb || 'callback';
-  var action = e.parameter.action || 'read';
+  var cb = (e.parameter.cb || 'cb');
+  var action = (e.parameter.action || 'read');
+  var ps = PropertiesService.getScriptProperties();
 
-  // Receive one chunk (write mode)
+  // Write chunk into script properties (fast, no sheet read/write)
   if (action === 'chunk') {
-    var i = parseInt(e.parameter.i || '0');
-    var total = e.parameter.total || '1';
-    sh.getRange(2 + i, 2).setValue(e.parameter.d || '');
-    sh.getRange(1, 2).setValue(total);
-    return ContentService
-      .createTextOutput(cb + '({"ok":true})')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    ps.setProperty('chunk_' + (e.parameter.i || '0'), e.parameter.d || '');
+    ps.setProperty('chunk_total', e.parameter.total || '1');
+    return ContentService.createTextOutput(cb + '({"ok":true})').setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
 
-  // Commit: assemble chunks, write to A1 (for script reads) and B1 (for CSV reads)
+  // Commit: join chunks and save as final data
   if (action === 'commit') {
-    var total = parseInt(sh.getRange(1, 2).getValue() || '1');
+    var total = parseInt(ps.getProperty('chunk_total') || '1');
     var parts = [];
-    for (var i = 0; i < total; i++) {
-      parts.push(sh.getRange(2 + i, 2).getValue() || '');
-    }
+    for (var i = 0; i < total; i++) parts.push(ps.getProperty('chunk_' + i) || '');
     var json = parts.join('');
-    sh.getRange(1, 1).setValue(json);
-    sh.getRange(1, 2, total + 1, 1).clearContent();
-    return ContentService
-      .createTextOutput(cb + '({"ok":true})')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    ps.setProperty('data', json);
+    // Clean up chunk keys
+    for (var i = 0; i < total; i++) ps.deleteProperty('chunk_' + i);
+    ps.deleteProperty('chunk_total');
+    return ContentService.createTextOutput(cb + '({"ok":true})').setMimeType(ContentService.MimeType.JAVASCRIPT);
   }
 
-  // Read via script (fallback)
-  var data = sh.getRange(1, 1).getValue() || '[]';
-  return ContentService
-    .createTextOutput(cb + '(' + data + ')')
-    .setMimeType(ContentService.MimeType.JAVASCRIPT);
-}`;
+  // Read: return data from properties (fast)
+  var data = ps.getProperty('data') || '[]';
+  return ContentService.createTextOutput(cb + '(' + data + ')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+}`
 
 function setSyncDot(state){
   const dot = document.getElementById('sync-dot');
@@ -1395,10 +1386,7 @@ function openSync(){
       '</p>'+
       '<div class="fsec" style="border-top:none;padding-top:0">Web App URL</div>'+
       '<div class="frow"><input class="fi" id="sync-url-input" value="'+esc(syncUrl)+'" style="font-size:12px;"></div>'+
-      '<div class="sync-warn">⚠ Auto-pull runs each time you open the app, so both devices stay in sync.</div>'+
-      '<div class="fsec" style="margin-top:12px">Sheet CSV URL <span style="color:var(--dim);font-weight:400;font-size:11px">(optional — makes pull instant)</span></div>'+
-      '<div class="frow"><input class="fi" id="csv-url-input" value="'+esc(csvUrl)+'" placeholder="https://docs.google.com/spreadsheets/d/.../export?format=csv" style="font-size:11px;"></div>'+
-      '<div class="sync-warn" style="margin-top:4px">How to get: Google Sheet → File → Share → Publish to web → Sheet1 → CSV → Publish. Copy that URL.</div>';
+      '<div class="sync-warn">⚠ Auto-pull runs each time you open the app, so both devices stay in sync.</div>';
   } else {
     html =
       '<div class="sync-step"><div class="sync-step-num">1</div><div class="sync-step-body">'+
@@ -1454,9 +1442,6 @@ function saveSync(){
   if(!val.includes('script.google.com')){ toast('URL should be from script.google.com', true); return; }
   syncUrl = val;
   localStorage.setItem(SYNC_KEY, syncUrl);
-  // Derive Sheet ID from the Apps Script URL and build CSV pull URL
-  // Apps Script URL: https://script.google.com/macros/s/SCRIPT_ID/exec
-  // We store it and let user also optionally provide sheet publish CSV URL
   const csvInp = document.getElementById('csv-url-input');
   if(csvInp && csvInp.value.trim()){
     csvUrl = csvInp.value.trim();
@@ -1494,36 +1479,29 @@ function jsonp(url, cbName, timeout){
       if(done) return; done = true;
       delete window[id];
       const s = document.getElementById('_jsonp_'+id);
-      if(s && s.parentNode) s.parentNode.removeChild(s);
+      if(s) s.parentNode.removeChild(s);
       reject(new Error('timeout'));
-    }, timeout || 30000);
+    }, timeout || 12000);
 
     window[id] = function(data){
       if(done) return; done = true;
       clearTimeout(timer);
       delete window[id];
       const s = document.getElementById('_jsonp_'+id);
-      if(s && s.parentNode) s.parentNode.removeChild(s);
+      if(s) s.parentNode.removeChild(s);
       resolve(data);
     };
 
-    // Remove any stale script with same id first
-    const old = document.getElementById('_jsonp_'+id);
-    if(old && old.parentNode) old.parentNode.removeChild(old);
-
     const script = document.createElement('script');
     script.id = '_jsonp_' + id;
+    script.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + id;
     script.onerror = function(){
       if(done) return; done = true;
       clearTimeout(timer);
       delete window[id];
-      const s = document.getElementById('_jsonp_'+id);
-      if(s && s.parentNode) s.parentNode.removeChild(s);
       reject(new Error('script error'));
     };
-    // Set src AFTER adding onerror, append to body not head
-    script.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + id;
-    document.body.appendChild(script);
+    document.head.appendChild(script);
   });
 }
 
@@ -1583,11 +1561,9 @@ async function syncPush(){
 async function syncPull(){
   if(!syncUrl) return;
   setSyncDot('busy');
-  // Helper to expand short keys from sheet
   function expand(t){
     return {
-      id:             t.id,
-      no:             t.no,
+      id:t.id, no:t.no,
       stages:         t.stages || [],
       stageEnteredAt: t.sea || t.stageEnteredAt || {},
       priority:       t.p   || t.priority || '',
@@ -1601,42 +1577,194 @@ async function syncPull(){
       tcq:            t.q   || t.tcq      || '',
     };
   }
-  function applyData(arr){
-    if(!Array.isArray(arr) || !arr.length) return false;
-    tenders = arr.map(expand);
-    save(); render();
-    localStorage.setItem('tt_last_sync', Date.now().toString());
-    setSyncDot('ok'); toast('Pulled from cloud ✓');
-    return true;
-  }
-
-  // Try 1: CSV URL (instant — no Apps Script cold start)
-  if(csvUrl){
-    try{
-      const controller = new AbortController();
-      const t = setTimeout(()=>controller.abort(), 10000);
-      const res = await fetch(csvUrl, {signal: controller.signal});
-      clearTimeout(t);
-      const text = await res.text();
-      // CSV has one cell with our JSON in it
-      // Strip CSV wrapping — data may be quoted
-      const cell = text.trim().replace(/^"+/, '').replace(/"+$/, '').replace(/""/g, '"');
-      const arr = JSON.parse(cell);
-      if(applyData(arr)) return;
-    } catch(e){ console.warn('CSV pull failed:', e.message); }
-  }
-
-  // Try 2: Apps Script JSONP (may be slow on cold start)
   try{
-    const remote = await jsonp(syncUrl + '?action=read', '_tt_pull_'+Date.now(), 35000);
-    if(applyData(remote)) return;
-    setSyncDot('ok');
+    const remote = await jsonp(syncUrl + '?action=read', '_tt_pull_'+Date.now(), 30000);
+    const arr = Array.isArray(remote) ? remote : null;
+    if(arr && arr.length > 0){
+      tenders = arr.map(expand);
+      save(); render();
+      localStorage.setItem('tt_last_sync', Date.now().toString());
+      setSyncDot('ok'); toast('Pulled from cloud ✓');
+    } else {
+      setSyncDot('ok');
+    }
   } catch(e){
     setSyncDot('err');
-    const msg = e.message === 'timeout'
-      ? 'Pull timed out. Open Sync → add Sheet CSV URL to fix.'
-      : 'Pull failed: ' + e.message;
+    const msg = e.message === 'timeout' ? 'Pull timed out — redeploy Apps Script' :
+                e.message === 'script error' ? 'Pull blocked — check Apps Script URL' :
+                'Pull failed: ' + e.message;
     toast(msg, true);
     console.warn('Sync pull error:', e.message);
   }
 }
+
+
+// ── DRAG AND DROP ─────────────────────────────────────
+(function(){
+  var ghost = null;
+  var dragTid = null, dragFromSid = null;
+  var overChips = null;
+  var longPressTimer = null;
+  var isDragging = false;
+  var startX, startY;
+
+  function createGhost(wrap){
+    var g = wrap.cloneNode(true);
+    g.className = 'drag-ghost';
+    var r = wrap.getBoundingClientRect();
+    g.style.width  = r.width  + 'px';
+    g.style.height = r.height + 'px';
+    g.style.left   = r.left   + 'px';
+    g.style.top    = r.top    + 'px';
+    document.body.appendChild(g);
+    return g;
+  }
+
+  function moveGhost(x, y){
+    if(!ghost) return;
+    ghost.style.left = (x - ghost.offsetWidth/2)  + 'px';
+    ghost.style.top  = (y - ghost.offsetHeight/2) + 'px';
+  }
+
+  function getChipsAt(x, y){
+    var els = document.elementsFromPoint(x, y);
+    for(var i=0;i<els.length;i++){
+      if(els[i].classList.contains('srow-chips')) return els[i];
+      if(els[i].classList.contains('srow')){ 
+        var c = els[i].querySelector('.srow-chips');
+        if(c) return c;
+      }
+    }
+    return null;
+  }
+
+  function startDrag(wrap, clientX, clientY){
+    isDragging = true;
+    dragTid  = wrap.dataset.tid;
+    dragFromSid = parseInt(wrap.dataset.sid);
+    wrap.classList.add('dragging');
+    ghost = createGhost(wrap);
+    moveGhost(clientX, clientY);
+    // Vibrate on mobile if supported
+    if(navigator.vibrate) navigator.vibrate(40);
+  }
+
+  function moveDrag(clientX, clientY){
+    if(!isDragging) return;
+    moveGhost(clientX, clientY);
+    var chips = getChipsAt(clientX, clientY);
+    if(chips !== overChips){
+      if(overChips) overChips.classList.remove('drag-over');
+      overChips = chips;
+      if(overChips) overChips.classList.add('drag-over');
+    }
+  }
+
+  function endDrag(wrap){
+    if(!isDragging) return;
+    isDragging = false;
+    wrap.classList.remove('dragging');
+    if(ghost){ ghost.remove(); ghost = null; }
+    if(overChips){
+      overChips.classList.remove('drag-over');
+      var toSid = parseInt(overChips.dataset.sid);
+      if(!isNaN(toSid) && toSid !== dragFromSid){
+        dropChip(dragTid, dragFromSid, toSid);
+      }
+      overChips = null;
+    }
+    dragTid = null; dragFromSid = null;
+  }
+
+  function cancelDrag(wrap){
+    if(!isDragging) return;
+    isDragging = false;
+    wrap.classList.remove('dragging');
+    if(ghost){ ghost.remove(); ghost = null; }
+    if(overChips){ overChips.classList.remove('drag-over'); overChips = null; }
+    dragTid = null; dragFromSid = null;
+  }
+
+  function dropChip(tid, fromSid, toSid){
+    var t = tenders.find(function(x){ return x.id === tid; });
+    if(!t) return;
+    // Remove from old stage, add to new stage
+    t.stages = t.stages.filter(function(s){ return s !== fromSid; });
+    if(!t.stages.includes(toSid)) t.stages.push(toSid);
+    // Update stageEnteredAt
+    if(!t.stageEnteredAt) t.stageEnteredAt = {};
+    if(!t.stageEnteredAt[toSid]){
+      var midnight = new Date(); midnight.setHours(0,0,0,0);
+      t.stageEnteredAt[toSid] = midnight.getTime();
+    }
+    save(); render();
+    var toStage = STAGES.find(function(s){ return s.id === toSid; });
+    toast('Moved to ' + (toStage ? toStage.label : 'stage'));
+    syncPush();
+  }
+
+  window.initDrag = function(wrap){
+    // ── DESKTOP: mouse drag ──
+    wrap.addEventListener('mousedown', function(e){
+      if(e.button !== 0) return;
+      e.preventDefault();
+      startX = e.clientX; startY = e.clientY;
+      var moved = false;
+
+      function onMove(ev){
+        var dx = ev.clientX - startX, dy = ev.clientY - startY;
+        if(!moved && Math.sqrt(dx*dx+dy*dy) > 6){ moved = true; startDrag(wrap, ev.clientX, ev.clientY); }
+        if(moved) moveDrag(ev.clientX, ev.clientY);
+      }
+      function onUp(ev){
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        if(moved){ endDrag(wrap); }
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    // ── MOBILE: long-press then drag ──
+    wrap.addEventListener('touchstart', function(e){
+      var touch = e.touches[0];
+      startX = touch.clientX; startY = touch.clientY;
+      longPressTimer = setTimeout(function(){
+        longPressTimer = null;
+        startDrag(wrap, startX, startY);
+      }, 400);
+    }, {passive: true});
+
+    wrap.addEventListener('touchmove', function(e){
+      var touch = e.touches[0];
+      var dx = touch.clientX - startX, dy = touch.clientY - startY;
+      if(longPressTimer && Math.sqrt(dx*dx+dy*dy) > 8){
+        clearTimeout(longPressTimer); longPressTimer = null;
+      }
+      if(isDragging){
+        e.preventDefault();
+        moveDrag(touch.clientX, touch.clientY);
+      }
+    }, {passive: false});
+
+    wrap.addEventListener('touchend', function(e){
+      if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; }
+      if(isDragging) endDrag(wrap);
+    });
+
+    wrap.addEventListener('touchcancel', function(){
+      if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; }
+      cancelDrag(wrap);
+    });
+  };
+})();
+
+// ── INIT ──────────────────────────────────────────────
+load();
+buildSelects();
+render();
+setSyncDot('idle');
+if(syncUrl) syncPull();
+</script>
+</body>
+</html>
