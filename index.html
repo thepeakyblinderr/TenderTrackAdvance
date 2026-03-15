@@ -232,6 +232,9 @@ textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
 .pri-check{width:22px;height:22px;border-radius:6px;border:1px solid var(--border2);background:var(--muted);
   display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;color:transparent;}
 .pri-toggle.on .pri-check{background:#dc2626;border-color:#ef4444;color:#fff;}
+.af-toggle.on{background:rgba(59,158,255,.08);border-color:rgba(59,158,255,.4);}
+.af-toggle.on .pri-label{color:var(--accent);}
+.af-toggle.on .pri-check{background:var(--accent);border-color:var(--accent);color:#fff;}
 
 /* REMOVE CHIPS */
 .rbox{background:rgba(185,28,28,.07);border:1px solid rgba(239,68,68,.2);border-radius:11px;padding:12px;margin-bottom:14px;}
@@ -331,6 +334,12 @@ textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
 .ai-sub{font-size:11px;color:var(--dim);margin-top:3px;font-family:var(--mono);}
 .snooze-btn{flex-shrink:0;background:var(--muted);border:1px solid var(--border2);border-radius:8px;
   padding:5px 10px;color:var(--dim);font-size:11px;font-family:var(--sans);cursor:pointer;white-space:nowrap;align-self:center;}
+.done-btn{flex-shrink:0;background:rgba(46,168,120,.12);border:1px solid rgba(46,168,120,.35);border-radius:8px;
+  padding:5px 10px;color:var(--green);font-size:13px;font-weight:700;font-family:var(--sans);cursor:pointer;white-space:nowrap;align-self:center;transition:background .15s;}
+.done-btn:hover{background:rgba(46,168,120,.22);}
+.ag-chevron{font-size:11px;color:var(--dim);flex-shrink:0;}
+.ag-open .ag-chevron{color:var(--text);}
+.ag-header{user-select:none;}
 .ai-arrow{color:var(--dim);font-size:18px;font-weight:300;flex-shrink:0;align-self:center;cursor:pointer;line-height:1;}
 .no-actions{text-align:center;padding:40px 20px;}
 .no-actions-icon{font-size:36px;margin-bottom:10px;opacity:.25;}
@@ -394,9 +403,9 @@ textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
   <div class="stats-row">
     <div class="stat-chip"><b id="s-total">0</b>&nbsp;Tenders</div>
     <div class="stat-chip"><b id="s-stages">0</b>&nbsp;Active</div>
-    <div class="stat-chip hidden" id="s-expiry-chip"><b id="s-expiry" style="color:#f87171">0</b>&nbsp;Expiring</div>
+    <div class="stat-chip hidden" id="s-expiry-chip" onclick="openExpiring()" style="cursor:pointer"><b id="s-expiry" style="color:var(--red)">0</b>&nbsp;Expiring</div>
     <div class="stat-chip btn" id="pf-all"  onclick="setPF('')"    style="border-color:rgba(77,159,255,.4);color:var(--accent2)">All</div>
-    <div class="stat-chip btn" id="pf-high" onclick="setPF('high')">🔴&nbsp;High</div>
+    <div class="stat-chip btn" id="pf-high" onclick="setPF('high')">🔴&nbsp;High&nbsp;<b id="s-high">0</b></div>
   </div>
   <div class="board" id="board"></div>
 </main>
@@ -417,6 +426,13 @@ textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
         <span class="pri-icon">🔴</span>
         <span class="pri-label">Mark as High Priority</span>
         <span class="pri-check" id="pri-check"></span>
+      </div>
+    </div>
+    <div class="frow"><label class="fl">AF File</label>
+      <div class="pri-toggle af-toggle" id="af-toggle" onclick="toggleAF()">
+        <span class="pri-icon">🔷</span>
+        <span class="pri-label">Mark as AF File</span>
+        <span class="pri-check" id="af-check"></span>
       </div>
     </div>
     <div class="frow"><label class="fl">Notes</label>
@@ -483,6 +499,17 @@ textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
   </div>
 </div>
 
+<!-- EXPIRING BIDS -->
+<div class="overlay" id="modal-expiring">
+  <div class="modal">
+    <div class="mh">
+      <div class="mt">⏰ Expiring Bid Validities</div>
+      <button class="xbtn" onclick="closeM('modal-expiring')">×</button>
+    </div>
+    <div id="expiring-body"></div>
+  </div>
+</div>
+
 <!-- DELETE -->
 <div class="overlay" id="modal-del">
   <div class="modal" style="max-width:400px">
@@ -510,12 +537,13 @@ textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
     <div id="fu-current-info"></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
       <span style="font-size:13px;color:var(--dim);flex:1">Remind me in</span>
-      <input type="number" id="fu-days" min="1" max="365" value="3"
+      <input type="number" id="fu-days" min="0" max="365" value="3"
         style="width:64px;background:var(--surface);border:1px solid var(--border2);border-radius:8px;
         padding:9px 10px;color:var(--text);font-family:var(--mono);font-size:15px;text-align:center;outline:none;-webkit-appearance:none;">
       <span style="font-size:13px;color:var(--dim)">days</span>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+      <div onclick="setFuDays(0)" style="background:var(--muted);border:1px solid var(--border2);border-radius:7px;padding:7px 14px;font-size:13px;font-family:var(--mono);font-weight:600;color:var(--dim);cursor:pointer;">Today</div>
       <div onclick="setFuDays(1)" style="background:var(--muted);border:1px solid var(--border2);border-radius:7px;padding:7px 16px;font-size:13px;font-family:var(--mono);font-weight:600;color:var(--dim);cursor:pointer;">1d</div>
       <div onclick="setFuDays(2)" style="background:var(--muted);border:1px solid var(--border2);border-radius:7px;padding:7px 16px;font-size:13px;font-family:var(--mono);font-weight:600;color:var(--dim);cursor:pointer;">2d</div>
       <div onclick="setFuDays(3)" style="background:var(--muted);border:1px solid var(--border2);border-radius:7px;padding:7px 16px;font-size:13px;font-family:var(--mono);font-weight:600;color:var(--dim);cursor:pointer;">3d</div>
@@ -567,6 +595,7 @@ const STAGES = [
   {id:15, label:'Price Bid Opened. Under Reverse Auction',               color:'#4ade80'},
   {id:16, label:'Price Bids Opened. Under Estimate Review',              color:'#86efac'},
   {id:17, label:'Price Negotiation Approval Put Up',                     color:'#fbbf24'},
+  {id:31, label:'Under Negotiation',                                      color:'#f59e0b'},
   {id:18, label:'Price Workability Awaited from Indenter',               color:'#fb7185'},
   {id:19, label:'Price Workability Awaited from Bidder',                 color:'#f97316'},
   {id:20, label:'Price Reasonability Awaited',                           color:'#e879f9'},
@@ -665,14 +694,15 @@ function setFuDays(n){
 
 function saveFollowUp(){
   if(!fuId) return;
-  const days = parseInt(document.getElementById('fu-days').value) || 3;
-  if(days < 1){ toast('Enter at least 1 day', true); return; }
+  const days = parseInt(document.getElementById('fu-days').value);
+  if(isNaN(days) || days < 0){ toast('Enter 0 or more days', true); return; }
   const fu = getFU();
-  const until = new Date(); until.setHours(0,0,0,0); until.setDate(until.getDate() + days);
+  const until = new Date(); until.setHours(0,0,0,0);
+  until.setDate(until.getDate() + days);  // days=0 → today
   fu[fuId] = {until: until.getTime(), days: days, setOn: Date.now()};
   saveFU(fu);
-  const dueStr = until.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
-  toast('Follow-up set — due '+dueStr+' ('+days+'d) ✓');
+  const dueStr = days === 0 ? 'today' : until.toLocaleDateString('en-IN',{day:'2-digit',month:'short'})+' ('+days+'d)';
+  toast('Follow-up set — due '+dueStr+' ✓');
   closeM('modal-fu');
   render(); refreshBadge();
   // Rebuild actions modal if it's already open
@@ -841,6 +871,7 @@ function getActions(t){
     {sid:10, icon:'📬', msg:'FTR Awaited — follow up',                  sub:'Chase final technical review from indenter'},
     {sid:11, icon:'🔍', msg:'CBA Checking in progress',                 sub:'Check status of CBA checking'},
     {sid:17, icon:'🤝', msg:'Price Negotiation Approval Put Up',        sub:'Follow up with negotiation committee'},
+    {sid:31, icon:'🤝', msg:'Under Negotiation — follow up',             sub:'Monitor negotiation progress and update outcome'},
     {sid:18, icon:'⏳', msg:'Price Workability Awaited from Indenter',  sub:'Chase workability certificate from indenter'},
     {sid:19, icon:'⏳', msg:'Price Workability Awaited from Bidder',    sub:'Chase workability certificate from bidder'},
     {sid:20, icon:'🔍', msg:'Price Reasonability Awaited',              sub:'Follow up on price reasonability certificate'},
@@ -900,6 +931,37 @@ function refreshBadge(){
   else { btn.classList.remove('lit'); }
 }
 
+// ── DONE ITEMS (temporary, session-level with undo) ─────
+const _doneItems = {};  // key -> true
+let _undoTimer = null;
+
+function markActionDone(key, renderAfter){
+  _doneItems[key] = true;
+  // Show undo toast
+  const el = document.getElementById('toast');
+  el.innerHTML = '✓ Marked done &nbsp;<button onclick="undoActionDone(\''+key+'\')" style="background:none;border:none;color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer;padding:0;text-decoration:underline">Undo</button>';
+  el.style.borderColor = 'rgba(46,168,120,.4)';
+  el.classList.add('show');
+  clearTimeout(_undoTimer);
+  _undoTimer = setTimeout(function(){ el.classList.remove('show'); }, 4000);
+  if(renderAfter) buildActionsModal();
+}
+
+function undoActionDone(key){
+  delete _doneItems[key];
+  const el = document.getElementById('toast');
+  el.classList.remove('show');
+  buildActionsModal();
+}
+
+// ── COLLAPSIBLE STATE ─────────────────────────────────
+const _sectionOpen = {today:true, week:false, soon:false, followup:false};
+
+function toggleSection(g){
+  _sectionOpen[g] = !_sectionOpen[g];
+  buildActionsModal();
+}
+
 // ── BUILD ACTIONS MODAL ───────────────────────────────
 function buildActionsModal(){
   const body = document.getElementById('actions-body');
@@ -933,9 +995,13 @@ function buildActionsModal(){
     return;
   }
 
-  // Group into 4 strict buckets
+  // Group into 4 strict buckets — filter done items
   const groups = {today:[], week:[], soon:[], followup:[]};
-  allItems.forEach(function(x){ (groups[x.a.bucket] || groups.followup).push(x); });
+  allItems.forEach(function(x){
+    const key = x.t.id + '_' + x.a.msg;
+    if(_doneItems[key]) return;  // hide done items
+    (groups[x.a.bucket] || groups.followup).push(x);
+  });
 
   const groupMeta = {
     today:    {icon:'🔴', title:'Due Today',          cls:'s-today'},
@@ -947,30 +1013,49 @@ function buildActionsModal(){
   function renderItem(x){
     const a = x.a, t = x.t;
     const canSnooze = a.snoozeKey;
-    return '<div class="ai">'+
+    const key = t.id + '_' + a.msg;
+    const isToday = a.bucket === 'today';
+    return '<div class="ai" id="ai-'+key.replace(/[^a-z0-9]/gi,'_')+'">' +
       '<div class="ai-icon">'+a.icon+'</div>'+
       '<div class="ai-body" onclick="closeM(\'modal-actions\');openDetail(\''+t.id+'\')">' +
-        '<div class="ai-tender">'+esc(t.no)+(t.priority==='high'?' 🔴':'')+'</div>'+
+        '<div class="ai-tender">'+esc(t.no)+(t.priority==='high'?' 🔴':'')+(t.isAF?' 🔷':'')+'</div>'+
         '<div class="ai-msg">'+a.msg+'</div>'+
         '<div class="ai-sub">'+a.sub+'</div>'+
       '</div>'+
-      (canSnooze
-        ? '<button class="snooze-btn" onclick="snoozeItem(\''+a.snoozeKey+'\')">3d ✓</button>'
-        : '<div class="ai-arrow" onclick="closeM(\'modal-actions\');openDetail(\''+t.id+'\')">›</div>'
+      (isToday
+        ? '<button class="done-btn" onclick="markActionDone(\''+key.replace(/'/g,"\\'")+'\''+',true)" title="Mark done">✓</button>'
+        : (canSnooze
+            ? '<button class="snooze-btn" onclick="snoozeItem(\''+a.snoozeKey+'\')">3d ✓</button>'
+            : '<div class="ai-arrow" onclick="closeM(\'modal-actions\');openDetail(\''+t.id+'\')">›</div>'
+          )
       )+
     '</div>';
   }
 
   let html = '<div class="actions-date">'+today+'</div>';
   ['today','week','soon','followup'].forEach(function(g){
-    if(!groups[g].length) return;
+    const all_in_group = allItems.filter(function(x){ return x.a.bucket===g; }).length;
+    if(!all_in_group) return;
+    const visible = groups[g];
+    const done_count = all_in_group - visible.length;
     const m = groupMeta[g];
-    html += '<div class="ag '+m.cls+'">'
-      + '<div class="ag-header">'
+    const open = _sectionOpen[g];
+    html += '<div class="ag '+m.cls+' '+(open?'ag-open':'')+'">'
+      + '<div class="ag-header" onclick="toggleSection(\''+g+'\')" style="cursor:pointer">'
         + '<span class="ag-title">'+m.icon+' '+m.title+'</span>'
-        + '<span class="ag-count">'+groups[g].length+'</span>'
+        + '<span style="display:flex;align-items:center;gap:6px">'
+          + (done_count > 0 ? '<span style="font-size:10px;color:var(--green);font-family:var(--mono)">'+done_count+' done</span>' : '')
+          + '<span class="ag-count">'+all_in_group+'</span>'
+          + '<span class="ag-chevron">'+(open?'▾':'▸')+'</span>'
+        + '</span>'
       + '</div>';
-    groups[g].forEach(function(x){ html += renderItem(x); });
+    if(open){
+      if(visible.length === 0){
+        html += '<div style="font-size:12px;color:var(--green);padding:10px 4px;font-family:var(--mono)">✓ All items in this section are done</div>';
+      } else {
+        visible.forEach(function(x){ html += renderItem(x); });
+      }
+    }
     html += '</div>';
   });
 
@@ -980,6 +1065,42 @@ function buildActionsModal(){
 function openActions(){
   buildActionsModal();
   openM('modal-actions');
+}
+
+// ── EXPIRING BIDS ─────────────────────────────────────
+function openExpiring(){
+  const expList = tenders
+    .map(function(t){ return {t:t, dl:daysLeft(t.validity)}; })
+    .filter(function(x){ return x.dl !== null && x.dl <= 30; })
+    .sort(function(a,b){ return a.dl - b.dl; });
+
+  let html = '';
+  if(!expList.length){
+    html = '<div class="no-actions"><div class="no-actions-icon">✅</div><div class="no-actions-title">No expiring bids</div></div>';
+  } else {
+    expList.forEach(function(x){
+      const t = x.t, dl = x.dl;
+      const isExpired = dl < 0;
+      const isUrgent  = dl >= 0 && dl <= 7;
+      const col = isExpired ? 'var(--red)' : isUrgent ? 'var(--yellow)' : 'var(--accent)';
+      const bg  = isExpired ? 'rgba(192,57,43,.07)' : isUrgent ? 'rgba(180,83,9,.06)' : 'rgba(26,86,219,.05)';
+      const bdr = isExpired ? 'rgba(192,57,43,.25)' : isUrgent ? 'rgba(180,83,9,.2)' : 'rgba(26,86,219,.15)';
+      const label = isExpired ? 'EXPIRED '+Math.abs(dl)+'d ago'
+                  : dl === 0  ? 'Expires TODAY'
+                  : 'Expires in '+dl+'d';
+      html +=
+        '<div style="display:flex;align-items:center;gap:12px;padding:11px 13px;border-radius:12px;'+
+          'background:'+bg+';border:1px solid '+bdr+';margin-bottom:7px;cursor:pointer" onclick="closeM(\'modal-expiring\');openDetail(\''+t.id+'\')">'+
+          '<div style="flex:1;min-width:0">'+
+            '<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text)">'+esc(t.no)+(t.priority==='high'?' 🔴':'')+'</div>'+
+            '<div style="font-size:11px;color:var(--dim);margin-top:2px;font-family:var(--mono)">Validity: '+fmt(t.validity)+'</div>'+
+          '</div>'+
+          '<div style="font-family:var(--mono);font-size:12px;font-weight:700;color:'+col+';white-space:nowrap">'+label+'</div>'+
+        '</div>';
+    });
+  }
+  document.getElementById('expiring-body').innerHTML = html;
+  openM('modal-expiring');
 }
 
 // ── RENDER BOARD ──────────────────────────────────────
@@ -1000,9 +1121,10 @@ function render(){
   document.getElementById('s-total').textContent  = tenders.length;
   document.getElementById('s-stages').textContent = activeStages.size;
   document.getElementById('s-expiry').textContent = expiring;
+  const highCount = tenders.filter(function(t){ return t.priority==='high'; }).length;
+  const sh = document.getElementById('s-high'); if(sh) sh.textContent = highCount;
   const ec = document.getElementById('s-expiry-chip');
   if(ec){ expiring ? ec.classList.remove('hidden') : ec.classList.add('hidden'); }
-
   refreshBadge();
 
   const board = document.getElementById('board');
@@ -1063,7 +1185,9 @@ function render(){
         const chip = document.createElement('span');
         chip.className = 'tchip' + (h ? ' p-high' : '');
         chip.innerHTML = '<span class="tchip-dot" style="background:' + s.color + ';box-shadow:0 0 4px ' + s.color + '88"></span>'
-          + esc(t.no) + (w ? ' <span style="font-size:10px">\u26A0</span>' : '');
+          + esc(t.no)
+          + (t.isAF ? ' <span style="font-size:10px" title="AF File">🔷</span>' : '')
+          + (w ? ' <span style="font-size:10px">\u26A0</span>' : '');
         chip.addEventListener('click', function(){ openDetail(t.id); });
 
         const fu = document.createElement('span');
@@ -1145,10 +1269,16 @@ function openDetail(id){
 
   document.getElementById('detail-body').innerHTML =
     '<div class="detail-no">'+esc(t.no)+'</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">'+
     (t.priority==='high'?
       '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(185,28,28,.15);'+
         'border:1px solid rgba(239,68,68,.4);border-radius:7px;padding:5px 11px;font-size:12px;'+
-        'font-weight:600;color:#fca5a5;margin-bottom:12px">🔴 High Priority</div>':'')+
+        'font-weight:600;color:#fca5a5">🔴 High Priority</div>':'')+
+    (t.isAF?
+      '<div style="display:inline-flex;align-items:center;gap:6px;background:rgba(59,158,255,.12);'+
+        'border:1px solid rgba(59,158,255,.35);border-radius:7px;padding:5px 11px;font-size:12px;'+
+        'font-weight:600;color:var(--accent)">🔷 AF File</div>':'')+
+    '</div>'+
     '<div class="detail-stages" id="detail-stages-'+t.id+'">'+
       t.stages.map(function(sid){
         const s = sg(sid);
@@ -1211,6 +1341,7 @@ function fillForm(t){
   document.getElementById('f-validity').value = t.validity || '';
   document.getElementById('f-tcq').value      = t.tcq || '';
   setPri(t.priority === 'high');
+  setAF(!!t.isAF);
 }
 
 function clearForm(){
@@ -1218,6 +1349,7 @@ function clearForm(){
     .forEach(function(i){ const e=document.getElementById(i); if(e) e.value=''; });
   document.getElementById('f-stage').value = 0;
   setPri(false);
+  setAF(false);
 }
 
 function buildChips(t){
@@ -1280,6 +1412,7 @@ function saveTender(){
   const fields = {
     no: no,
     priority:  document.getElementById('pri-toggle').classList.contains('on') ? 'high' : '',
+    isAF:      document.getElementById('af-toggle').classList.contains('on') ? true : false,
     notes:     document.getElementById('f-notes').value.trim(),
     emd:       document.getElementById('f-emd').value.trim() ? String(Math.round(Number(document.getElementById('f-emd').value))) : '',
     saleEnd:   document.getElementById('f-sale-end').value,
@@ -1318,6 +1451,13 @@ function togglePri(){ setPri(!document.getElementById('pri-toggle').classList.co
 function setPri(on){
   document.getElementById('pri-toggle').classList.toggle('on', on);
   document.getElementById('pri-check').textContent = on ? '✓' : '';
+}
+
+// ── AF TOGGLE ─────────────────────────────────────────
+function toggleAF(){ setAF(!document.getElementById('af-toggle').classList.contains('on')); }
+function setAF(on){
+  document.getElementById('af-toggle').classList.toggle('on', on);
+  document.getElementById('af-check').textContent = on ? '✓' : '';
 }
 
 // ── DELETE ────────────────────────────────────────────
