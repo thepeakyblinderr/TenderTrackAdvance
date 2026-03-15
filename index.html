@@ -469,6 +469,7 @@ if('serviceWorker' in navigator){
     <div class="stat-chip hidden" id="s-expiry-chip" onclick="openExpiring()" style="cursor:pointer"><b id="s-expiry" style="color:var(--red)">0</b>&nbsp;Expiring</div>
     <div class="stat-chip btn" id="pf-all"  onclick="setPF('')"    style="border-color:rgba(77,128,230,.4);color:var(--accent2)">All</div>
     <div class="stat-chip btn" id="pf-high" onclick="setPF('high')">🔴&nbsp;High&nbsp;<b id="s-high">0</b></div>
+    <div class="stat-chip btn" id="pf-af"   onclick="setPF('af')">🔷&nbsp;AF&nbsp;<b id="s-af">0</b></div>
   </div>
   <div class="board" id="board"></div>
 </div>
@@ -855,8 +856,13 @@ function setPF(v){
   pFilter = v;
   document.getElementById('pf-all').style.borderColor  = (v==='')?'rgba(77,128,230,.4)':'';
   document.getElementById('pf-all').style.color        = (v==='')?'var(--accent2)':'';
-  document.getElementById('pf-high').style.borderColor = (v==='high')?'rgba(239,68,68,.5)':'';
+  document.getElementById('pf-high').style.borderColor = (v==='high')?'rgba(224,90,78,.5)':'';
   document.getElementById('pf-high').style.color       = (v==='high')?'var(--red)':'';
+  const pfAf = document.getElementById('pf-af');
+  if(pfAf){
+    pfAf.style.borderColor = (v==='af')?'rgba(77,128,230,.5)':'';
+    pfAf.style.color       = (v==='af')?'var(--accent)':'';
+  }
   render();
 }
 
@@ -1173,7 +1179,8 @@ function render(){
   const _todayStart = (function(){ const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); })();
   const q = document.getElementById('search').value.toLowerCase().trim();
   const list = tenders.filter(function(t){
-    if(pFilter && t.priority !== pFilter) return false;
+    if(pFilter === 'high' && t.priority !== 'high') return false;
+    if(pFilter === 'af'   && !t.isAF) return false;
     if(!q) return true;
     return t.no.toLowerCase().includes(q) ||
            (t.notes||'').toLowerCase().includes(q) ||
@@ -1187,6 +1194,8 @@ function render(){
   document.getElementById('s-expiry').textContent = expiring;
   const highCount = tenders.filter(function(t){ return t.priority==='high'; }).length;
   const sh = document.getElementById('s-high'); if(sh) sh.textContent = highCount;
+  const afCount = tenders.filter(function(t){ return t.isAF === true; }).length;
+  const sa = document.getElementById('s-af'); if(sa) sa.textContent = afCount;
   const ec = document.getElementById('s-expiry-chip');
   if(ec){ expiring ? ec.classList.remove('hidden') : ec.classList.add('hidden'); }
   refreshBadge();
@@ -1405,7 +1414,7 @@ function fillForm(t){
   document.getElementById('f-validity').value = t.validity || '';
   document.getElementById('f-tcq').value      = t.tcq || '';
   setPri(t.priority === 'high');
-  setAF(!!t.isAF);
+  setAF(t.isAF === true);
 }
 
 function clearForm(){
@@ -1476,7 +1485,7 @@ function saveTender(){
   const fields = {
     no: no,
     priority:  document.getElementById('pri-toggle').classList.contains('on') ? 'high' : '',
-    isAF:      document.getElementById('af-toggle').classList.contains('on') ? true : false,
+    isAF:      document.getElementById('af-toggle').classList.contains('on') || false,
     notes:     document.getElementById('f-notes').value.trim(),
     emd:       document.getElementById('f-emd').value.trim() ? String(Math.round(Number(document.getElementById('f-emd').value))) : '',
     saleEnd:   document.getElementById('f-sale-end').value,
@@ -1740,6 +1749,7 @@ async function syncPush(){
       const o = {id:t.id, no:t.no, stages:t.stages};
       if(t.stageEnteredAt && Object.keys(t.stageEnteredAt).length) o.sea = t.stageEnteredAt;
       if(t.priority) o.p  = t.priority;
+      if(t.isAF)     o.af = true;
       if(t.notes)    o.n  = t.notes;
       if(t.emd)      o.e  = t.emd;
       if(t.saleEnd)  o.s  = t.saleEnd;
@@ -1794,6 +1804,7 @@ async function syncPull(attempt){
       stages:         t.stages || [],
       stageEnteredAt: t.sea || t.stageEnteredAt || {},
       priority:       t.p   || t.priority || '',
+      isAF:           !!(t.af || t.isAF),
       notes:          t.n   || t.notes    || '',
       emd:            t.e   || t.emd      || '',
       saleEnd:        t.s   || t.saleEnd  || '',
