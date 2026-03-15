@@ -109,6 +109,9 @@ main{padding:16px;padding-bottom:calc(30px + var(--safe-bot));}
 .emd-card-header{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;}
 .emd-no{font-family:var(--title);font-size:14px;font-weight:800;color:var(--text);}
 .emd-vendor{font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:3px;line-height:1.5;}
+.emd-vendor-row{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:nowrap;}
+.emd-vendor-name{font-family:var(--mono);font-size:11px;color:var(--dim);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.emd-vendor-amt{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--green);white-space:nowrap;flex-shrink:0;}
 .emd-amount{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--green);white-space:nowrap;}
 .emd-status{font-size:10px;font-weight:700;font-family:var(--mono);border-radius:20px;padding:3px 10px;white-space:nowrap;}
 .emd-status.submitted{background:rgba(77,128,230,.12);color:var(--accent);border:1px solid rgba(77,128,230,.28);}
@@ -445,7 +448,12 @@ function render(){
   // Stats
   let totalActive = 0, pendingCount = 0, submittedCount = 0, refundedCount = 0;
   tenders.forEach(t => {
-    totalActive += activeAmount(t);
+    // Sum only the latest entry per vendor (not all entries)
+    const vendorMap = {};
+    (t.entries||[]).forEach(e => { if(e.vendor) vendorMap[e.vendor] = e; });
+    Object.values(vendorMap).forEach(e => {
+      if(e.status !== 'refunded') totalActive += (parseFloat(e.amount)||0);
+    });
     if(t.entries) t.entries.forEach(e => {
       if(e.status==='refund-pending') pendingCount++;
       if(e.status==='submitted') submittedCount++;
@@ -468,25 +476,36 @@ function render(){
     const expanded = expandedCards.has(t.id);
     const entriesFiltered = activeFilter === 'all' ? (t.entries||[]) : (t.entries||[]).filter(e=>e.status===activeFilter);
 
-    // Collect all unique vendor names across all entries for the collapsed summary
-    const allVendors = [...new Set((t.entries||[]).map(e => e.vendor).filter(Boolean))];
-    const vendorSummary = allVendors.length
-      ? allVendors.join(' · ')
-      : null;
+    // Build per-vendor summary: each unique vendor on its own line with their latest amount + status
+    const vendorMap = {};
+    (t.entries||[]).forEach(e => {
+      if(!e.vendor) return;
+      // Keep the last entry per vendor (most recent)
+      vendorMap[e.vendor] = e;
+    });
+    const vendorRows = Object.values(vendorMap);
 
-    // Show the dominant status (most common among non-refunded, else latest)
+    // Amount to show in header = latest entry's amount (not a sum)
+    const headerAmount = le ? le.amount : null;
     const statusToShow = le ? le.status : null;
+
+    // Build stacked vendor lines HTML
+    const vendorHtml = vendorRows.length
+      ? vendorRows.map(e =>
+          `<div class="emd-vendor-row">` +
+            `<span class="emd-vendor-name">${esc(e.vendor)}</span>` +
+            `<span class="emd-vendor-amt">${fmtAmount(e.amount)}</span>` +
+            `<span class="emd-status ${e.status}" style="font-size:9px;padding:2px 7px;">${statusLabel(e.status)}</span>` +
+          `</div>`
+        ).join('')
+      : `<div class="emd-vendor" style="color:var(--dim);font-style:italic">No entries yet</div>`;
 
     return `<div class="emd-card${expanded?' expanded':''}" id="card-${t.id}">
       <div class="emd-card-header" onclick="toggleCard('${t.id}')">
         <div style="flex:1;min-width:0;">
           <div class="emd-no">${esc(t.no)}</div>
-          ${vendorSummary
-            ? `<div class="emd-vendor">${esc(vendorSummary)}</div>`
-            : '<div class="emd-vendor" style="color:var(--dim);font-style:italic">No entries yet</div>'}
+          ${vendorHtml}
         </div>
-        ${le ? `<div class="emd-amount">${fmtAmount(activeAmount(t))}</div>` : ''}
-        ${statusToShow ? `<div class="emd-status ${statusToShow}">${statusLabel(statusToShow)}</div>` : ''}
         <div class="emd-chevron">▾</div>
       </div>
       ${expanded ? `
