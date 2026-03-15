@@ -2,11 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#07091280">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="TenderTrack">
+<link rel="manifest" href="manifest.json">
 <title>TenderTrack</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -38,6 +39,57 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:1
     radial-gradient(ellipse 80% 60% at 50% -10%,var(--grad1) 0%,transparent 60%),
     radial-gradient(ellipse 50% 40% at 90% 90%,var(--grad2) 0%,transparent 55%),
     radial-gradient(ellipse 30% 30% at 10% 60%,var(--grad3) 0%,transparent 50%);}
+
+
+/* ── DESKTOP LAYOUT ─────────────────────────────────── */
+.page-wrap{max-width:960px;margin:0 auto;width:100%;}
+header .page-wrap{display:flex;flex-direction:column;}
+@media(min-width:768px){
+  body{font-size:15px;}
+  main{padding:20px 28px;padding-bottom:40px;}
+  header{padding:0 28px;padding-top:var(--safe-top);}
+  .hdr-row1{height:56px;gap:10px;}
+  .hdr-row2{height:44px;padding-bottom:8px;}
+  .stats-row{gap:10px;margin-bottom:18px;}
+  .stat-chip{padding:10px 16px;font-size:12px;border-radius:12px;}
+  .stat-chip b{font-size:15px;}
+  .board{gap:4px;}
+  .srow{border-radius:14px;padding:12px 14px;}
+  .srow-name{font-size:12px;}
+  .srow-cnt{font-size:11px;padding:3px 10px;}
+  .tchip{padding:8px 15px;min-height:38px;font-size:13px;}
+  .tchip-fu{height:38px;padding:0 11px;font-size:12px;}
+  .board-empty{padding:100px 40px;}
+  .board-empty-title{font-size:20px;}
+  .modal{border-radius:16px;max-width:600px;margin:auto;}
+  .overlay{align-items:center;}
+  .overlay.open .modal{transform:translateY(0);}
+  .fi{font-size:15px;padding:12px 14px;}
+  .fl{font-size:11px;}
+  .btn-s,.btn-c,.btn-del{font-size:15px;padding:11px 24px;}
+  .btn-add{padding:9px 20px;font-size:14px;}
+  .btn-sync,.btn-today,.btn-theme,.btn-emd{padding:8px 14px;font-size:13px;}
+  .brand{font-size:17px;}
+  .brand-pip{width:32px;height:32px;font-size:16px;}
+  .hdr-search{font-size:15px;padding:10px 15px;}
+  .ag-title{font-size:11px;}
+  .ai{padding:13px 16px;border-radius:14px;}
+  .ai-msg{font-size:14px;}
+  .ai-sub{font-size:12px;}
+  .detail-no{font-size:22px;}
+  .detail-sec{font-size:11px;}
+  .dd-l{font-size:11px;}
+  .dd-v{font-size:13px;}
+  .detail-notes{font-size:14px;padding:14px;}
+  .sync-step-title{font-size:14px;}
+  .sync-step-desc{font-size:13px;}
+  .sync-code{font-size:11px;}
+  .mt{font-size:18px;}
+  .fsec{font-size:11px;}
+  .fgrid{gap:14px;}
+  .srow-chips{gap:8px;}
+  .srow-chips.drag-over{min-height:50px;}
+}
 
 /* HEADER */
 header{position:sticky;top:0;z-index:50;
@@ -379,10 +431,18 @@ textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
 .hidden{display:none!important;}
 </style>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', function(){
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+  });
+}
+</script>
 </head>
 <body>
 
 <header>
+<div class="page-wrap">
   <div class="hdr-row1">
     <div class="brand"><div class="brand-pip">📋</div>TenderTrack</div>
     <button class="btn-theme" id="btn-theme" onclick="toggleTheme()" title="Toggle theme">🌙</button>
@@ -398,9 +458,11 @@ textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
       Today<span class="today-badge" id="today-badge">0</span>
     </button>
   </div>
+</div>
 </header>
 
 <main>
+<div class="page-wrap">
   <div class="stats-row">
     <div class="stat-chip"><b id="s-total">0</b>&nbsp;Tenders</div>
     <div class="stat-chip"><b id="s-stages">0</b>&nbsp;Active</div>
@@ -409,6 +471,7 @@ textarea.fi{resize:vertical;min-height:60px;font-size:14px;}
     <div class="stat-chip btn" id="pf-high" onclick="setPF('high')">🔴&nbsp;High&nbsp;<b id="s-high">0</b></div>
   </div>
   <div class="board" id="board"></div>
+</div>
 </main>
 
 <!-- ADD/EDIT -->
