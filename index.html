@@ -1027,54 +1027,68 @@ function getDoneItems(){
 
 function saveDoneItems(obj){ localStorage.setItem(DONE_KEY, JSON.stringify(obj)); }
 
-function markActionDone(key, renderAfter, extra){
-  // extra may arrive as a JSON string from onclick attribute
+function markActionDone(key, extra){
   if(typeof extra === 'string'){ try{ extra = JSON.parse(extra); }catch(e){ extra = {}; } }
+  extra = extra || {};
+
+  // 1. Persist done state
   const done = getDoneItems();
   done[key] = _todayStr();
   saveDoneItems(done);
 
-  // If it's a manual follow-up reminder (🔔) — clear it from storage entirely
-  // so it doesn't regenerate tomorrow
-  if(extra && extra.isFollowUp && extra.tenderId){
+  // 2. Follow-up reminder → clear it so it doesn't regenerate tomorrow
+  if(extra.isFollowUp && extra.tenderId){
     const fu = getFU();
     delete fu[extra.tenderId];
     saveFU(fu);
   }
 
-  // If it's a stage nudge — auto-snooze it so it doesn't reappear tomorrow
-  if(extra && extra.snoozeKey){
+  // 3. Stage nudge → auto-snooze 1 day so it doesn't reappear tomorrow
+  if(extra.snoozeKey){
     const s = getSnoozes();
     const until = new Date(); until.setHours(0,0,0,0); until.setDate(until.getDate()+1);
     s[extra.snoozeKey] = until.getTime();
     localStorage.setItem(SNOOZE_KEY, JSON.stringify(s));
   }
 
-  // Show undo toast
+  // 4. Show undo toast — store context on the button via data attribute
   const el = document.getElementById('toast');
-  el.innerHTML = '✓ Marked done &nbsp;<button onclick="undoActionDone(\''+key+'\','+(extra?JSON.stringify(extra).replace(/'/g,"\\'"):'null')+')" style="background:none;border:none;color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer;padding:0;text-decoration:underline">Undo</button>';
+  const extraSafe = JSON.stringify(extra);
+  el.innerHTML =
+    '<span>✓ Marked done</span>' +
+    '<button id="undo-done-btn" style="background:none;border:none;color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer;padding:0 0 0 10px;text-decoration:underline">Undo</button>';
+  const undoBtn = el.querySelector('#undo-done-btn');
+  undoBtn.dataset.key   = key;
+  undoBtn.dataset.extra = extraSafe;
+  undoBtn.addEventListener('click', function(){
+    undoActionDone(this.dataset.key, this.dataset.extra);
+  });
   el.style.borderColor = 'rgba(46,168,120,.4)';
   el.classList.add('show');
   clearTimeout(_undoTimer);
   _undoTimer = setTimeout(function(){ el.classList.remove('show'); }, 4000);
-  if(renderAfter){ render(); refreshBadge(); buildActionsModal(); }
+
+  render(); refreshBadge(); buildActionsModal();
 }
 
 function undoActionDone(key, extra){
   if(typeof extra === 'string'){ try{ extra = JSON.parse(extra); }catch(e){ extra = {}; } }
+  extra = extra || {};
+
+  // Remove from done
   const done = getDoneItems();
   delete done[key];
   saveDoneItems(done);
 
-  // Restore follow-up if it was cleared
-  if(extra && extra.isFollowUp && extra.tenderId && extra.fuEntry){
+  // Restore follow-up entry if it was cleared
+  if(extra.isFollowUp && extra.tenderId && extra.fuEntry){
     const fu = getFU();
     fu[extra.tenderId] = extra.fuEntry;
     saveFU(fu);
   }
 
   // Un-snooze stage nudge
-  if(extra && extra.snoozeKey){
+  if(extra.snoozeKey){
     const s = getSnoozes();
     delete s[extra.snoozeKey];
     localStorage.setItem(SNOOZE_KEY, JSON.stringify(s));
@@ -1148,7 +1162,7 @@ function buildActionsModal(){
     const key = t.id + '_' + a.msg;
     const isToday = a.bucket === 'today';
 
-    // Build extra context for smart done handling
+    // Build extra context object for smart done handling
     const extra = {};
     if(a.isFollowUp){
       extra.isFollowUp = true;
@@ -1157,9 +1171,10 @@ function buildActionsModal(){
       if(fe) extra.fuEntry = fe;
     }
     if(a.snoozeKey) extra.snoozeKey = a.snoozeKey;
-    const extraJson = JSON.stringify(extra).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
-    return '<div class="ai" id="ai-'+key.replace(/[^a-z0-9]/gi,'_')+'">' +
+    const safeid = 'done-'+key.replace(/[^a-z0-9]/gi,'_');
+
+    const html = '<div class="ai" id="ai-'+key.replace(/[^a-z0-9]/gi,'_')+'">' +
       '<div class="ai-icon">'+a.icon+'</div>'+
       '<div class="ai-body" onclick="closeM(\'modal-actions\');openDetail(\''+t.id+'\')">' +
         '<div class="ai-tender">'+esc(t.no)+(t.priority==='high'?' 🔴':'')+(t.isAF?' 🔷':'')+'</div>'+
@@ -1167,14 +1182,23 @@ function buildActionsModal(){
         '<div class="ai-sub">'+a.sub+'</div>'+
       '</div>'+
       (isToday
-        ? '<button class="done-btn" onclick="markActionDone(\''+key.replace(/'/g,"\\'")+'\''+',true,\''+extraJson+'\')" title="Hide for today — reappears tomorrow if still pending">✓ Done</button>'
+        ? '<button class="done-btn" id="'+safeid+'" title="Hide for today">✓ Done</button>'
         : (canSnooze
             ? '<button class="snooze-btn" onclick="snoozeItem(\''+a.snoozeKey+'\')">3d ✓</button>'
             : '<div class="ai-arrow" onclick="closeM(\'modal-actions\');openDetail(\''+t.id+'\')">›</div>'
           )
       )+
     '</div>';
+
+    // Wire up done button after HTML is inserted — stored in a pending list
+    if(isToday){
+      _pendingDoneBtns.push({id: safeid, key: key, extra: extra});
+    }
+    return html;
   }
+
+  // Track done buttons that need event listeners attached after innerHTML
+  const _pendingDoneBtns = [];
 
   let html = '<div class="actions-date">'+today+'</div>'
     + '<div style="font-size:11px;color:var(--dim);font-family:var(--mono);text-align:center;margin-bottom:14px;line-height:1.5;">'
@@ -1206,6 +1230,17 @@ function buildActionsModal(){
   });
 
   body.innerHTML = html;
+
+  // Attach event listeners to done buttons (avoids all onclick string escaping bugs)
+  _pendingDoneBtns.forEach(function(item){
+    const btn = document.getElementById(item.id);
+    if(btn){
+      btn.addEventListener('click', function(e){
+        e.stopPropagation();
+        markActionDone(item.key, item.extra);
+      });
+    }
+  });
 }
 
 function openActions(){
