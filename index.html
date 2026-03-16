@@ -1001,27 +1001,88 @@ function refreshBadge(){
   else { btn.classList.remove('lit'); }
 }
 
-// ── DONE ITEMS (temporary, session-level with undo) ─────
-const _doneItems = {};  // key -> true
+// ── DONE ITEMS (persisted to localStorage, auto-expire at midnight) ─────────
+const DONE_KEY = 'tt_done';
 let _undoTimer = null;
 
-function markActionDone(key, renderAfter){
-  _doneItems[key] = true;
+function _todayStr(){
+  const d = new Date();
+  return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+}
+
+function getDoneItems(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(DONE_KEY)||'{}');
+    // Purge keys that aren't from today
+    const today = _todayStr();
+    const cleaned = {};
+    Object.keys(raw).forEach(function(k){ if(raw[k] === today) cleaned[k] = today; });
+    // If anything was purged, write cleaned version back
+    if(Object.keys(cleaned).length !== Object.keys(raw).length){
+      localStorage.setItem(DONE_KEY, JSON.stringify(cleaned));
+    }
+    return cleaned;
+  } catch(e){ return {}; }
+}
+
+function saveDoneItems(obj){ localStorage.setItem(DONE_KEY, JSON.stringify(obj)); }
+
+function markActionDone(key, renderAfter, extra){
+  // extra may arrive as a JSON string from onclick attribute
+  if(typeof extra === 'string'){ try{ extra = JSON.parse(extra); }catch(e){ extra = {}; } }
+  const done = getDoneItems();
+  done[key] = _todayStr();
+  saveDoneItems(done);
+
+  // If it's a manual follow-up reminder (🔔) — clear it from storage entirely
+  // so it doesn't regenerate tomorrow
+  if(extra && extra.isFollowUp && extra.tenderId){
+    const fu = getFU();
+    delete fu[extra.tenderId];
+    saveFU(fu);
+  }
+
+  // If it's a stage nudge — auto-snooze it so it doesn't reappear tomorrow
+  if(extra && extra.snoozeKey){
+    const s = getSnoozes();
+    const until = new Date(); until.setHours(0,0,0,0); until.setDate(until.getDate()+1);
+    s[extra.snoozeKey] = until.getTime();
+    localStorage.setItem(SNOOZE_KEY, JSON.stringify(s));
+  }
+
   // Show undo toast
   const el = document.getElementById('toast');
-  el.innerHTML = '✓ Marked done &nbsp;<button onclick="undoActionDone(\''+key+'\')" style="background:none;border:none;color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer;padding:0;text-decoration:underline">Undo</button>';
+  el.innerHTML = '✓ Marked done &nbsp;<button onclick="undoActionDone(\''+key+'\','+(extra?JSON.stringify(extra).replace(/'/g,"\\'"):'null')+')" style="background:none;border:none;color:var(--accent2);font-size:13px;font-weight:700;cursor:pointer;padding:0;text-decoration:underline">Undo</button>';
   el.style.borderColor = 'rgba(46,168,120,.4)';
   el.classList.add('show');
   clearTimeout(_undoTimer);
   _undoTimer = setTimeout(function(){ el.classList.remove('show'); }, 4000);
-  if(renderAfter) buildActionsModal();
+  if(renderAfter){ render(); refreshBadge(); buildActionsModal(); }
 }
 
-function undoActionDone(key){
-  delete _doneItems[key];
+function undoActionDone(key, extra){
+  if(typeof extra === 'string'){ try{ extra = JSON.parse(extra); }catch(e){ extra = {}; } }
+  const done = getDoneItems();
+  delete done[key];
+  saveDoneItems(done);
+
+  // Restore follow-up if it was cleared
+  if(extra && extra.isFollowUp && extra.tenderId && extra.fuEntry){
+    const fu = getFU();
+    fu[extra.tenderId] = extra.fuEntry;
+    saveFU(fu);
+  }
+
+  // Un-snooze stage nudge
+  if(extra && extra.snoozeKey){
+    const s = getSnoozes();
+    delete s[extra.snoozeKey];
+    localStorage.setItem(SNOOZE_KEY, JSON.stringify(s));
+  }
+
   const el = document.getElementById('toast');
   el.classList.remove('show');
-  buildActionsModal();
+  render(); refreshBadge(); buildActionsModal();
 }
 
 // ── COLLAPSIBLE STATE ─────────────────────────────────
@@ -1066,10 +1127,11 @@ function buildActionsModal(){
   }
 
   // Group into 4 strict buckets — filter done items
+  const _doneNow = getDoneItems();
   const groups = {today:[], week:[], soon:[], followup:[]};
   allItems.forEach(function(x){
     const key = x.t.id + '_' + x.a.msg;
-    if(_doneItems[key]) return;  // hide done items
+    if(_doneNow[key]) return;  // hide done items
     (groups[x.a.bucket] || groups.followup).push(x);
   });
 
@@ -1085,6 +1147,18 @@ function buildActionsModal(){
     const canSnooze = a.snoozeKey;
     const key = t.id + '_' + a.msg;
     const isToday = a.bucket === 'today';
+
+    // Build extra context for smart done handling
+    const extra = {};
+    if(a.isFollowUp){
+      extra.isFollowUp = true;
+      extra.tenderId = t.id;
+      const fe = getFUFor(t.id);
+      if(fe) extra.fuEntry = fe;
+    }
+    if(a.snoozeKey) extra.snoozeKey = a.snoozeKey;
+    const extraJson = JSON.stringify(extra).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
     return '<div class="ai" id="ai-'+key.replace(/[^a-z0-9]/gi,'_')+'">' +
       '<div class="ai-icon">'+a.icon+'</div>'+
       '<div class="ai-body" onclick="closeM(\'modal-actions\');openDetail(\''+t.id+'\')">' +
@@ -1093,7 +1167,7 @@ function buildActionsModal(){
         '<div class="ai-sub">'+a.sub+'</div>'+
       '</div>'+
       (isToday
-        ? '<button class="done-btn" onclick="markActionDone(\''+key.replace(/'/g,"\\'")+'\''+',true)" title="Mark done">✓</button>'
+        ? '<button class="done-btn" onclick="markActionDone(\''+key.replace(/'/g,"\\'")+'\''+',true,\''+extraJson+'\')" title="Hide for today — reappears tomorrow if still pending">✓ Done</button>'
         : (canSnooze
             ? '<button class="snooze-btn" onclick="snoozeItem(\''+a.snoozeKey+'\')">3d ✓</button>'
             : '<div class="ai-arrow" onclick="closeM(\'modal-actions\');openDetail(\''+t.id+'\')">›</div>'
@@ -1102,13 +1176,15 @@ function buildActionsModal(){
     '</div>';
   }
 
-  let html = '<div class="actions-date">'+today+'</div>';
+  let html = '<div class="actions-date">'+today+'</div>'
+    + '<div style="font-size:11px;color:var(--dim);font-family:var(--mono);text-align:center;margin-bottom:14px;line-height:1.5;">'
+    + 'Date items reappear till stage/date updated · Follow-ups clear on done'
+    + '</div>';
   ['today','week','soon','followup'].forEach(function(g){
     const all_in_group = allItems.filter(function(x){ return x.a.bucket===g; }).length;
     if(!all_in_group) return;
     const visible = groups[g];
-    const done_count = all_in_group - visible.length;
-    const m = groupMeta[g];
+    const done_count = all_in_group - visible.length;    const m = groupMeta[g];
     const open = _sectionOpen[g];
     html += '<div class="ag '+m.cls+' '+(open?'ag-open':'')+'">'
       + '<div class="ag-header" onclick="toggleSection(\''+g+'\')" style="cursor:pointer">'
