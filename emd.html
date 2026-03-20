@@ -1,109 +1,59 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="EMDTrack">
-<link rel="manifest" href="emd-manifest.json">
 <title>EMDTrack</title>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Syne:wght@700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 :root{
-  --mono:'JetBrains Mono',monospace;--sans:'Plus Jakarta Sans',system-ui,sans-serif;--title:'Syne',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',monospace;--sans:'Inter',sans-serif;
   --safe-top:env(safe-area-inset-top,0px);--safe-bot:env(safe-area-inset-bottom,0px);
 }
 [data-theme="dark"]{
-  --bg:#0f0f0e;--surface:#1a1a18;--card:#1a1a18;--card2:#242422;
-  --border:#2a2a28;--border2:#3a3a36;
-  --text:#f0f0ec;--dim:#8a8a80;--muted:#242422;
-  --accent:#4d80e6;--accent2:#6b9ef8;--glow:rgba(77,128,230,.2);
-  --green:#2ea878;--red:#e05a4e;--yellow:#d4900a;--purple:#a06cd5;
-  --grad1:rgba(46,168,120,.08);--grad2:rgba(77,128,230,.06);--grad3:rgba(160,108,213,.04);
+  --bg:#060a12;--surface:#0d1420;--card:#111c2e;--card2:#162338;
+  --border:#1e3050;--border2:#254068;
+  --text:#f0f6ff;--dim:#6080a8;--muted:#0a1220;
+  --accent:#3b9eff;--accent2:#70bbff;--glow:rgba(59,158,255,.22);
+  --grad1:rgba(59,130,246,.14);--grad2:rgba(16,185,129,.07);--grad3:rgba(99,102,241,.05);
 }
 [data-theme="light"]{
-  --bg:#f5f5f3;--surface:#ffffff;--card:#ffffff;--card2:#f0f0ee;
-  --border:#e4e4e0;--border2:#c8c8be;
-  --text:#0a0a0a;--dim:#6a6a60;--muted:#f0f0ee;
-  --accent:#1a56db;--accent2:#2563eb;--glow:rgba(26,86,219,.15);
-  --green:#047857;--red:#c0392b;--yellow:#b45309;--purple:#7B2FBE;
-  --grad1:rgba(4,120,87,.05);--grad2:rgba(26,86,219,.05);--grad3:rgba(123,47,190,.03);
+  --bg:#eef2f9;--surface:#ffffff;--card:#ffffff;--card2:#f4f7fd;
+  --border:#c8d8ee;--border2:#a8bcd8;
+  --text:#0a1a2e;--dim:#5070a0;--muted:#dde8f8;
+  --accent:#1a7dff;--accent2:#0056cc;--glow:rgba(26,125,255,.18);
+  --grad1:rgba(59,130,246,.07);--grad2:rgba(16,185,129,.04);--grad3:rgba(99,102,241,.03);
 }
 html,body{height:100%;}
 body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;
-  -webkit-font-smoothing:antialiased;
   transition:background .2s,color .2s;
   background-image:
     radial-gradient(ellipse 80% 60% at 50% -10%,var(--grad1) 0%,transparent 60%),
     radial-gradient(ellipse 50% 40% at 90% 90%,var(--grad2) 0%,transparent 55%),
     radial-gradient(ellipse 30% 30% at 10% 60%,var(--grad3) 0%,transparent 50%);}
 
-
-/* ── DESKTOP LAYOUT ─────────────────────────────────── */
-.page-wrap{max-width:960px;margin:0 auto;width:100%;}
-@media(min-width:768px){
-  body{font-size:15px;}
-  main{padding:20px 28px;padding-bottom:40px;}
-  header{padding:0 28px;padding-top:var(--safe-top);}
-  .hdr-row1{height:56px;gap:10px;}
-  .hdr-row2{height:44px;padding-bottom:8px;}
-  .stats-row{gap:10px;margin-bottom:18px;}
-  .stat-chip{padding:10px 16px;font-size:12px;border-radius:12px;}
-  .stat-chip b{font-size:15px;}
-  .filter-tabs{gap:8px;margin-bottom:16px;}
-  .ftab{font-size:12px;padding:7px 18px;}
-  .emd-list{gap:12px;}
-  .emd-card{border-radius:16px;}
-  .emd-card-header{padding:16px 18px;}
-  .emd-no{font-size:16px;}
-  .emd-vendor-row{gap:8px;}
-  .emd-vendor-name{font-size:12px;}
-  .emd-vendor-amt{font-size:12px;}
-  .emd-history{padding:0 18px 16px;}
-  .emd-entry{padding:13px 15px;border-radius:12px;}
-  .emd-entry-amount{font-size:14px;}
-  .emd-entry-date{font-size:12px;}
-  .emd-entry-notes{font-size:13px;}
-  .emd-add-entry{padding:12px 15px;font-size:14px;}
-  .modal{border-radius:16px;max-width:600px;margin:auto;}
-  .overlay{align-items:center;}
-  .mt{font-size:18px;}
-  .fi{font-size:15px;padding:12px 14px;}
-  .fl{font-size:11px;}
-  .fgrp{margin-bottom:16px;}
-  .btn-s,.btn-c{font-size:15px;padding:11px 24px;}
-  .btn-add{padding:9px 20px;font-size:14px;}
-  .btn-sync,.btn-theme,.btn-back{padding:8px 14px;font-size:13px;}
-  .brand{font-size:17px;}
-  .brand-pip{width:32px;height:32px;font-size:16px;}
-  .hdr-search{font-size:15px;padding:10px 15px;}
-  .sopt{font-size:12px;padding:12px 10px;}
-  .sync-step-body{font-size:13px;}
-  .emd-amount{font-size:14px;}
-  .emd-status{font-size:11px;padding:4px 12px;}
-  .emd-history-title{font-size:11px;}
-}
-
 /* HEADER */
 header{position:sticky;top:0;z-index:50;
   backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
   border-bottom:1px solid var(--border);padding:0 16px;padding-top:var(--safe-top);
   transition:background .2s,border-color .2s;}
-[data-theme="dark"] header{background:rgba(15,15,14,.92);box-shadow:0 1px 20px rgba(0,0,0,.3);}
-[data-theme="light"] header{background:rgba(245,245,243,.94);box-shadow:0 1px 12px rgba(0,0,0,.06);}
+[data-theme="dark"] header{background:rgba(6,10,18,.9);box-shadow:0 1px 30px rgba(0,0,0,.6);}
+[data-theme="light"] header{background:rgba(238,242,249,.92);box-shadow:0 1px 16px rgba(0,0,0,.08);}
 .hdr-row1{display:flex;align-items:center;height:48px;gap:8px;}
 .hdr-row2{display:flex;align-items:center;height:40px;gap:6px;padding-bottom:6px;}
 .btn-back{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border2);
-  border-radius:9px;padding:7px 11px;color:var(--dim);font-family:var(--sans);font-size:12px;font-weight:600;
+  border-radius:9px;padding:7px 11px;color:var(--dim);font-family:var(--sans);font-size:12px;font-weight:500;
   cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none;text-decoration:none;transition:all .15s;}
-.btn-back:hover{color:var(--green);border-color:rgba(46,168,120,.4);}
-.brand{display:flex;align-items:center;gap:9px;flex:1;min-width:0;font-family:var(--title);font-size:15px;font-weight:800;color:var(--text);letter-spacing:-.2px;}
-.brand-pip{width:28px;height:28px;border-radius:8px;flex-shrink:0;
-  background:linear-gradient(135deg,var(--green),#34d399);
+.btn-back:hover{color:var(--accent);border-color:rgba(59,158,255,.4);}
+.brand{display:flex;align-items:center;gap:9px;flex:1;min-width:0;font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);letter-spacing:.3px;}
+.brand-pip{width:26px;height:26px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(135deg,#047857,#34d399);
   display:flex;align-items:center;justify-content:center;font-size:13px;
-  box-shadow:0 2px 10px rgba(46,168,120,.35);}
+  box-shadow:0 0 14px rgba(52,211,153,.4),inset 0 1px 0 rgba(255,255,255,.25);}
 .hdr-search{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border2);
   border-radius:10px;padding:8px 13px;color:var(--text);font-family:var(--sans);font-size:14px;outline:none;-webkit-appearance:none;
   transition:border-color .15s,box-shadow .15s,background .2s;}
@@ -113,158 +63,167 @@ header{position:sticky;top:0;z-index:50;
   cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:15px;
   transition:background .2s,border-color .2s;-webkit-appearance:none;}
 .btn-theme:active{transform:scale(.9);}
+
 /* SYNC */
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 .sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:var(--border2);transition:background .3s;}
-.sync-dot.ok{background:var(--green);box-shadow:0 0 6px rgba(46,168,120,.6);}
-.sync-dot.err{background:var(--red);box-shadow:0 0 6px rgba(224,90,78,.6);}
-.sync-dot.busy{background:var(--yellow);box-shadow:0 0 6px rgba(212,144,10,.6);animation:pulse .8s infinite;}
+.sync-dot.ok{background:#34d399;box-shadow:0 0 6px #34d39977;}
+.sync-dot.err{background:#f87171;box-shadow:0 0 6px #f8717177;}
+.sync-dot.busy{background:#fbbf24;box-shadow:0 0 6px #fbbf2477;animation:pulse .8s infinite;}
 .btn-sync{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border2);
-  border-radius:9px;padding:7px 11px;color:var(--dim);font-family:var(--sans);font-size:12px;font-weight:600;
+  border-radius:9px;padding:7px 11px;color:var(--dim);font-family:var(--sans);font-size:12px;font-weight:500;
   cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none;transition:all .15s;}
-.btn-sync.ok{color:var(--green);border-color:rgba(46,168,120,.4);}
-.btn-add{background:var(--green);border:none;border-radius:9px;
-  padding:8px 16px;color:#fff;font-family:var(--sans);font-size:13px;font-weight:700;
+.btn-sync.ok{color:#34d399;border-color:rgba(52,211,153,.4);}
+.btn-add{background:linear-gradient(135deg,#047857,#34d399);border:none;border-radius:9px;
+  padding:8px 16px;color:#fff;font-family:var(--sans);font-size:13px;font-weight:600;
   cursor:pointer;white-space:nowrap;flex-shrink:0;-webkit-appearance:none;margin-left:auto;
-  box-shadow:0 2px 10px rgba(46,168,120,.3);transition:opacity .15s,transform .1s;}
-.btn-add:active{opacity:.85;transform:scale(.97);}
+  box-shadow:0 0 12px rgba(52,211,153,.3);transition:opacity .15s;}
+.btn-add:active{opacity:.85;}
+
 /* MAIN */
 main{padding:16px;padding-bottom:calc(30px + var(--safe-bot));}
+
 /* STATS */
 .stats-row{display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .stats-row::-webkit-scrollbar{display:none;}
-.stat-chip{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);
+.stat-chip{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border2);
   border-radius:12px;padding:9px 14px;font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap;flex-shrink:0;
   transition:background .2s;}
-.stat-chip b{font-size:14px;color:var(--text);}
-.stat-chip.green b{color:var(--green);}
-.stat-chip.amber b{color:var(--yellow);}
-.stat-chip.blue b{color:var(--accent);}
-.stat-chip.red b{color:var(--red);}
+.stat-chip b{font-size:14px;}
+.stat-chip.green b{color:#34d399;}
+[data-theme="light"] .stat-chip.green b{color:#047857;}
+.stat-chip.amber b{color:#fbbf24;}
+[data-theme="light"] .stat-chip.amber b{color:#b45309;}
+.stat-chip.blue b{color:var(--accent2);}
+.stat-chip.red b{color:#f87171;}
+[data-theme="light"] .stat-chip.red b{color:#dc2020;}
+
 /* FILTER TABS */
 .filter-tabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
 .filter-tabs::-webkit-scrollbar{display:none;}
 .ftab{background:var(--surface);border:1px solid var(--border2);border-radius:20px;
   padding:6px 14px;font-family:var(--mono);font-size:11px;font-weight:600;color:var(--dim);
   cursor:pointer;white-space:nowrap;flex-shrink:0;transition:all .15s;}
-.ftab.active{background:var(--green);border-color:var(--green);color:#fff;box-shadow:0 2px 10px rgba(46,168,120,.3);}
+.ftab.active{background:var(--accent);border-color:var(--accent);color:#fff;
+  box-shadow:0 0 12px var(--glow);}
+
 /* EMD CARDS */
 .emd-list{display:flex;flex-direction:column;gap:10px;}
-.emd-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .15s;}
-[data-theme="light"] .emd-card{box-shadow:0 1px 6px rgba(0,0,0,.05);}
-.emd-card:hover{border-color:var(--border2);}
+.emd-card{background:var(--surface);border:1px solid var(--border2);border-radius:14px;overflow:hidden;
+  transition:border-color .15s;}
+[data-theme="light"] .emd-card{box-shadow:0 2px 8px rgba(0,0,0,.06);}
+.emd-card:hover{border-color:rgba(59,158,255,.35);}
 .emd-card-header{display:flex;align-items:center;gap:10px;padding:13px 14px;cursor:pointer;}
-.emd-no{font-family:var(--title);font-size:14px;font-weight:800;color:var(--text);}
-.emd-vendor{font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:3px;line-height:1.5;}
-.emd-vendor-row{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:nowrap;}
-.emd-vendor-name{font-family:var(--mono);font-size:11px;color:var(--dim);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.emd-vendor-amt{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--green);white-space:nowrap;flex-shrink:0;}
-.emd-amount{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--green);white-space:nowrap;}
+.emd-no{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);flex:1;}
+.emd-vendor{font-size:11px;color:var(--dim);font-family:var(--mono);margin-top:2px;}
+.emd-amount{font-family:var(--mono);font-size:13px;font-weight:700;color:#34d399;white-space:nowrap;}
+[data-theme="light"] .emd-amount{color:#047857;}
 .emd-status{font-size:10px;font-weight:700;font-family:var(--mono);border-radius:20px;padding:3px 10px;white-space:nowrap;}
-.emd-status.submitted{background:rgba(77,128,230,.12);color:var(--accent);border:1px solid rgba(77,128,230,.28);}
-.emd-status.refund-pending{background:rgba(212,144,10,.12);color:var(--yellow);border:1px solid rgba(212,144,10,.28);}
-.emd-status.refunded{background:rgba(46,168,120,.12);color:var(--green);border:1px solid rgba(46,168,120,.25);}
+.emd-status.submitted{background:rgba(59,158,255,.15);color:#70bbff;border:1px solid rgba(59,158,255,.3);}
+[data-theme="light"] .emd-status.submitted{background:rgba(26,125,255,.1);color:#1255a0;border-color:rgba(26,125,255,.3);}
+.emd-status.refund-pending{background:rgba(251,191,36,.15);color:#fbbf24;border:1px solid rgba(251,191,36,.3);}
+[data-theme="light"] .emd-status.refund-pending{background:rgba(180,83,9,.1);color:#92400e;border-color:rgba(180,83,9,.3);}
+.emd-status.refunded{background:rgba(52,211,153,.12);color:#34d399;border:1px solid rgba(52,211,153,.25);}
+[data-theme="light"] .emd-status.refunded{background:rgba(4,120,87,.1);color:#047857;border-color:rgba(4,120,87,.3);}
 .emd-chevron{color:var(--dim);font-size:16px;flex-shrink:0;transition:transform .2s;}
 .emd-card.expanded .emd-chevron{transform:rotate(180deg);}
+
 /* EMD HISTORY */
 .emd-history{border-top:1px solid var(--border);padding:0 14px 12px;}
 .emd-history-title{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;
-  font-family:var(--mono);color:var(--green);padding:10px 0 8px;}
-.emd-entry{display:flex;flex-direction:column;gap:4px;background:var(--card2);border:1px solid var(--border);
+  font-family:var(--mono);color:var(--accent);padding:10px 0 8px;}
+.emd-entry{display:flex;flex-direction:column;gap:4px;background:var(--card);border:1px solid var(--border2);
   border-radius:10px;padding:11px 13px;margin-bottom:7px;cursor:pointer;transition:border-color .15s;}
+[data-theme="light"] .emd-entry{background:var(--card2);}
 .emd-entry:last-child{margin-bottom:0;}
-.emd-entry:hover{border-color:var(--border2);}
+.emd-entry:hover{border-color:rgba(59,158,255,.35);}
 .emd-entry-row{display:flex;align-items:center;gap:8px;}
 .emd-entry-amount{font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text);}
 .emd-entry-date{font-family:var(--mono);font-size:11px;color:var(--dim);flex:1;}
 .emd-entry-notes{font-size:12px;color:var(--dim);line-height:1.4;margin-top:2px;}
 .emd-add-entry{display:flex;align-items:center;gap:6px;background:transparent;border:1px dashed var(--border2);
-  border-radius:10px;padding:10px 13px;color:var(--dim);font-size:13px;font-family:var(--sans);font-weight:600;
+  border-radius:10px;padding:10px 13px;color:var(--dim);font-size:13px;font-family:var(--sans);
   cursor:pointer;width:100%;margin-top:4px;transition:all .15s;}
-.emd-add-entry:hover{border-color:var(--green);color:var(--green);}
+.emd-add-entry:hover{border-color:var(--accent);color:var(--accent);}
+
 /* EMPTY */
 .empty{text-align:center;padding:70px 20px;color:var(--dim);}
 .empty-icon{font-size:40px;margin-bottom:12px;opacity:.25;}
-.empty-title{font-family:var(--title);font-size:17px;font-weight:800;color:var(--text);margin-bottom:6px;}
+.empty-title{font-size:17px;font-weight:600;color:var(--text);margin-bottom:6px;}
 .empty-sub{font-size:13px;}
+
 /* MODAL */
 .overlay{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;justify-content:flex-end;
   background:rgba(0,0,0,0);pointer-events:none;transition:background .25s;}
-.overlay.open{background:rgba(0,0,0,.5);pointer-events:all;}
-.modal{background:var(--surface);border:1px solid var(--border2);
+.overlay.open{background:rgba(0,0,0,.55);pointer-events:all;}
+.modal{background:var(--card);border:1px solid var(--border2);
   border-radius:22px 22px 0 0;padding:20px 20px calc(20px + var(--safe-bot));
   max-height:92vh;overflow-y:auto;width:100%;max-width:600px;margin:0 auto;
   transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);}
 .overlay.open .modal{transform:translateY(0);}
-[data-theme="dark"] .modal{box-shadow:0 -16px 60px rgba(0,0,0,.4);}
-[data-theme="light"] .modal{box-shadow:0 -8px 40px rgba(0,0,0,.1);}
+[data-theme="dark"] .modal{box-shadow:0 -16px 60px rgba(0,0,0,.7);}
+[data-theme="light"] .modal{box-shadow:0 -8px 40px rgba(0,0,0,.12);}
 .modal-drag{width:40px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px;}
-.mt{font-family:var(--title);font-size:16px;font-weight:800;color:var(--text);}
+.mt{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--text);letter-spacing:.2px;}
 .xbtn{background:var(--card2);border:1px solid var(--border2);border-radius:8px;width:32px;height:32px;
   display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--dim);-webkit-appearance:none;}
 .mhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
-.fi{background:var(--card2);border:1px solid var(--border2);border-radius:11px;padding:11px 13px;
+.fi{background:var(--surface);border:1px solid var(--border2);border-radius:11px;padding:11px 13px;
   color:var(--text);font-family:var(--sans);font-size:15px;outline:none;width:100%;-webkit-appearance:none;
   transition:border-color .15s,box-shadow .15s,background .2s;}
 .fi:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow);}
-.fi::placeholder{color:var(--dim);}
-input[type="date"].fi{color-scheme:dark;}
-[data-theme="light"] input[type="date"].fi{color-scheme:light;}
-.fl{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);margin-bottom:6px;display:block;font-family:var(--mono);}
+.fl{font-size:12px;font-weight:600;color:var(--dim);margin-bottom:6px;display:block;font-family:var(--mono);}
 .fgrp{margin-bottom:14px;}
-.fsec{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--green);
+.fsec{font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--accent);
   font-family:var(--mono);padding:12px 0 8px;border-top:1px solid var(--border);}
 .mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);}
 .btn-c{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:10px 18px;
   color:var(--dim);font-family:var(--sans);font-size:14px;font-weight:500;cursor:pointer;-webkit-appearance:none;}
-.btn-s{background:var(--green);border:none;border-radius:10px;
-  padding:10px 20px;color:#fff;font-family:var(--sans);font-size:14px;font-weight:700;cursor:pointer;-webkit-appearance:none;
-  box-shadow:0 2px 10px rgba(46,168,120,.25);transition:transform .1s,opacity .15s;}
-.btn-s:active{transform:scale(.97);}
+.btn-s{background:linear-gradient(135deg,#047857,#34d399);border:1px solid rgba(52,211,153,.3);border-radius:10px;
+  padding:10px 20px;color:#fff;font-family:var(--sans);font-size:14px;font-weight:600;cursor:pointer;-webkit-appearance:none;
+  box-shadow:0 0 14px rgba(52,211,153,.25);}
+
 /* Status selector */
 .status-opts{display:flex;gap:8px;flex-wrap:wrap;}
 .sopt{flex:1;min-width:90px;border:1px solid var(--border2);border-radius:10px;padding:10px 8px;
   text-align:center;cursor:pointer;font-family:var(--mono);font-size:11px;font-weight:700;
   color:var(--dim);background:var(--surface);transition:all .15s;}
-.sopt.active-submitted{background:rgba(77,128,230,.12);border-color:rgba(77,128,230,.4);color:var(--accent);}
-.sopt.active-refund-pending{background:rgba(212,144,10,.12);border-color:rgba(212,144,10,.4);color:var(--yellow);}
-.sopt.active-refunded{background:rgba(46,168,120,.14);border-color:rgba(46,168,120,.4);color:var(--green);}
+.sopt.active-submitted{background:rgba(59,158,255,.15);border-color:rgba(59,158,255,.5);color:#70bbff;}
+[data-theme="light"] .sopt.active-submitted{background:rgba(26,125,255,.1);border-color:rgba(26,125,255,.4);color:#1255a0;}
+.sopt.active-refund-pending{background:rgba(251,191,36,.15);border-color:rgba(251,191,36,.5);color:#fbbf24;}
+[data-theme="light"] .sopt.active-refund-pending{background:rgba(180,83,9,.1);border-color:rgba(180,83,9,.4);color:#92400e;}
+.sopt.active-refunded{background:rgba(52,211,153,.15);border-color:rgba(52,211,153,.5);color:#34d399;}
+[data-theme="light"] .sopt.active-refunded{background:rgba(4,120,87,.1);border-color:rgba(4,120,87,.4);color:#047857;}
+
 /* SYNC MODAL */
-.sync-url-box{background:var(--card2);border:1px solid var(--border2);border-radius:10px;
+.sync-url-box{background:var(--surface);border:1px solid var(--border2);border-radius:10px;
   padding:10px 13px;font-size:11px;font-family:var(--mono);color:var(--dim);line-height:1.6;
   overflow-x:auto;white-space:pre;cursor:pointer;position:relative;margin-bottom:10px;}
-.btn-push{background:var(--green);border:none;border-radius:10px;
-  padding:11px 0;color:#fff;font-family:var(--sans);font-size:14px;font-weight:700;
+.btn-push{background:linear-gradient(135deg,#047857,#34d399);border:none;border-radius:10px;
+  padding:11px 0;color:#fff;font-family:var(--sans);font-size:14px;font-weight:600;
   cursor:pointer;width:100%;margin-bottom:8px;}
 .btn-pull{background:var(--surface);border:1px solid var(--border2);border-radius:10px;
-  padding:11px 0;color:var(--dim);font-family:var(--sans);font-size:14px;font-weight:600;
+  padding:11px 0;color:var(--dim);font-family:var(--sans);font-size:14px;font-weight:500;
   cursor:pointer;width:100%;margin-bottom:8px;}
 .sync-step{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
-.sync-step-num{width:22px;height:22px;border-radius:50%;background:rgba(46,168,120,.12);
-  border:1px solid rgba(46,168,120,.28);display:flex;align-items:center;justify-content:center;
-  font-size:10px;font-weight:700;color:var(--green);flex-shrink:0;margin-top:1px;font-family:var(--mono);}
+.sync-step-num{width:20px;height:20px;border-radius:50%;background:rgba(52,211,153,.15);
+  border:1px solid rgba(52,211,153,.3);display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;color:#34d399;flex-shrink:0;margin-top:1px;}
 .sync-step-body{flex:1;font-size:12px;color:var(--dim);line-height:1.5;}
+
 /* TOAST */
 .toast{position:fixed;bottom:calc(24px + var(--safe-bot));left:50%;transform:translateX(-50%) translateY(20px);
-  background:var(--text);border:1px solid var(--border2);border-radius:12px;
-  padding:10px 18px;font-size:13px;font-weight:500;color:var(--bg);
+  background:var(--card2);border:1px solid var(--border2);border-radius:12px;
+  padding:10px 18px;font-size:13px;font-weight:500;color:var(--text);
   opacity:0;transition:opacity .2s,transform .2s;pointer-events:none;white-space:nowrap;z-index:200;
-  box-shadow:0 4px 20px rgba(0,0,0,.15);}
+  box-shadow:0 4px 20px rgba(0,0,0,.3);}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-.toast.err{background:var(--red);color:#fff;border-color:var(--red);}
+.toast.err{color:#f87171;border-color:rgba(239,68,68,.4);}
 </style>
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('sw.js').catch(function(){});
-  });
-}
-</script>
 </head>
 <body>
 
 <header>
-<div class="page-wrap">
   <div class="hdr-row1">
     <a class="btn-back" href="index.html">← Back</a>
     <div class="brand"><div class="brand-pip">💰</div>EMDTrack</div>
@@ -276,13 +235,11 @@ if('serviceWorker' in navigator){
     <button class="btn-sync" id="btn-sync" onclick="openSync()">
       <span class="sync-dot" id="sync-dot"></span>Sync
     </button>
-    <button class="btn-sync" onclick="exportExcel()" title="Export to Excel" style="background:rgba(46,168,120,.1);border-color:rgba(46,168,120,.35);color:var(--green);">⬇ Excel</button>
+    <button class="btn-sync" onclick="exportExcel()" title="Export to Excel" style="background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.35);color:#4ade80;">⬇ Excel</button>
   </div>
-</div>
 </header>
 
 <main>
-<div class="page-wrap">
   <div class="stats-row">
     <div class="stat-chip blue"><b id="s-total">0</b>&nbsp;Tenders</div>
     <div class="stat-chip green"><b id="s-amount">₹0</b>&nbsp;Total EMD</div>
@@ -299,7 +256,6 @@ if('serviceWorker' in navigator){
   </div>
 
   <div class="emd-list" id="emd-list"></div>
-</div>
 </main>
 
 <!-- ADD/EDIT TENDER MODAL -->
@@ -378,27 +334,25 @@ if('serviceWorker' in navigator){
 <script>
 // ── THEME ─────────────────────────────────────────────
 (function(){
-  const saved = localStorage.getItem('tt_theme');
-  const sys = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  const theme = saved || sys;
-  document.documentElement.setAttribute('data-theme', theme);
+  const saved = localStorage.getItem('tt_theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', saved);
   const btn = document.getElementById('btn-theme');
-  if(btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  if(btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
 })();
 function toggleTheme(){
   const cur = document.documentElement.getAttribute('data-theme');
   const next = cur === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('tt_theme', next);
-  document.getElementById('btn-theme').textContent = next === 'dark' ? '☀️' : '🌙';
+  document.getElementById('btn-theme').textContent = next === 'dark' ? '🌙' : '☀️';
 }
 
 // ── CONSTANTS ──────────────────────────────────────────
-const KEY      = 'emd_v1';
-const SYNC_KEY = 'emd_sync_cfg';
+// -- CONSTANTS -------------------------------------------------
+const KEY       = 'emd_v1';
+const SYNC_KEY  = 'emd_sync_cfg';
 
-// ── STATE ──────────────────────────────────────────────
-// tenders = [{id, no, entries:[{id, amount, vendor, date, status, notes}]}]
+// -- STATE -------------------------------------------------------
 let tenders = [];
 let activeFilter = 'all';
 let editingTenderId = null;
@@ -406,6 +360,176 @@ let editingEntryTenderId = null;
 let editingEntryId = null;
 let selectedStatus = 'submitted';
 let expandedCards = new Set();
+
+// -- SYNC - GitHub Gist -----------------------------------------
+const EMD_SYNC_FILE = 'emdtrack-data.json';
+
+function getSyncCfg(){
+  try{ return JSON.parse(localStorage.getItem(SYNC_KEY)||'{}'); }catch(e){ return {}; }
+}
+function saveSyncCfg(cfg){ localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); }
+
+function setSyncDot(state){
+  const dot = document.getElementById('sync-dot');
+  const btn  = document.getElementById('btn-sync');
+  if(!dot||!btn) return;
+  dot.className = 'sync-dot' + (state?' '+state:'');
+  const cfg = getSyncCfg();
+  btn.className = 'btn-sync' + (cfg.token&&state==='ok'?' ok':'');
+}
+
+async function gistReq(method, path, body){
+  const cfg = getSyncCfg();
+  if(!cfg.token) throw new Error('No token');
+  const opts = {
+    method: method,
+    headers: {
+      'Authorization': 'Bearer ' + cfg.token,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    }
+  };
+  if(body) opts.body = JSON.stringify(body);
+  const res = await fetch('https://api.github.com' + path, opts);
+  if(!res.ok){
+    const err = await res.json().catch(function(){ return {}; });
+    throw new Error((err.message || res.statusText) + ' (' + res.status + ')');
+  }
+  return res.status === 204 ? {} : res.json();
+}
+
+async function syncPush(){
+  const cfg = getSyncCfg();
+  if(!cfg.token){ toast('Set up sync first', true); return; }
+  setSyncDot('busy');
+  try{
+    const files = {};
+    files[EMD_SYNC_FILE] = { content: JSON.stringify(tenders) };
+    let gistId = cfg.gistId;
+    if(!gistId){
+      const res = await gistReq('POST', '/gists', { description: 'EMDTrack data', public: false, files: files });
+      gistId = res.id; cfg.gistId = gistId; saveSyncCfg(cfg);
+    } else {
+      await gistReq('PATCH', '/gists/' + gistId, { files: files });
+    }
+    localStorage.setItem('emd_last_sync', Date.now().toString());
+    setSyncDot('ok'); toast('Pushed to Gist ✓');
+  } catch(e){
+    setSyncDot('err'); toast('Push failed: ' + e.message, true);
+  }
+}
+
+async function syncPull(){
+  const cfg = getSyncCfg();
+  if(!cfg.token) return;
+  if(!cfg.gistId){ toast('Push first to create the Gist', true); return; }
+  setSyncDot('busy');
+  try{
+    const res  = await gistReq('GET', '/gists/' + cfg.gistId);
+    const file = res.files && res.files[EMD_SYNC_FILE];
+    if(!file) throw new Error('Data file not found in Gist');
+    let raw = file.content;
+    if(file.truncated){ const r = await fetch(file.raw_url); raw = await r.text(); }
+    const arr = JSON.parse(raw);
+    if(Array.isArray(arr) && arr.length > 0){
+      tenders = arr; save(); render();
+      localStorage.setItem('emd_last_sync', Date.now().toString());
+      setSyncDot('ok'); toast('Pulled from Gist ✓');
+    } else { setSyncDot('ok'); toast('Nothing to pull'); }
+  } catch(e){
+    setSyncDot('err'); toast('Pull failed: ' + e.message, true);
+  }
+}
+
+function exportData(){
+  const blob = new Blob([JSON.stringify(tenders, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'emdtrack-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast('Exported ✓');
+}
+
+function importData(){
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.addEventListener('change', function(){
+    const file = input.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      try{
+        const arr = JSON.parse(ev.target.result);
+        if(!Array.isArray(arr)) throw new Error('Not a valid export file');
+        if(tenders.length > 0 && !confirm('Replace all ' + tenders.length + ' existing entries?')) return;
+        tenders = arr; save(); render();
+        toast('Imported ' + tenders.length + ' tenders ✓');
+      } catch(err){ toast('Import failed: ' + err.message, true); }
+    };
+    reader.readAsText(file);
+  });
+  input.click();
+}
+
+function lastSyncText(){
+  const ts = localStorage.getItem('emd_last_sync');
+  if(!ts) return 'never';
+  const diff = Math.round((Date.now()-parseInt(ts))/60000);
+  if(diff < 1) return 'just now';
+  if(diff < 60) return diff+'m ago';
+  return Math.round(diff/60)+'h ago';
+}
+
+function openSync(){
+  const cfg = getSyncCfg();
+  const connected = !!(cfg.token);
+  const body = document.getElementById('sync-body');
+  let html = '';
+  if(connected){
+    html =
+      '<div class="sync-url-box">✓ Connected · Last sync: '+lastSyncText()+'</div>'+
+      (cfg.gistId ? '<p style="font-size:11px;color:var(--dim);font-family:var(--mono);margin-bottom:14px;word-break:break-all">Gist: <a href="https://gist.github.com/'+cfg.gistId+'" target="_blank" style="color:var(--accent)">'+cfg.gistId.slice(0,20)+'…</a></p>' : '<p style="font-size:12px;color:var(--yellow);margin-bottom:14px;">⚠ No Gist yet — Push to create.</p>')+
+      '<div style="display:flex;gap:8px;margin-bottom:12px;"><button class="btn-push" id="es-push">⬆ Push to Gist</button><button class="btn-pull" id="es-pull">⬇ Pull from Gist</button></div>'+
+      '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);font-family:var(--mono);margin-bottom:8px;">Export / Import</div>'+
+      '<div style="display:flex;gap:8px;margin-bottom:14px;"><button class="btn-push" id="es-export" style="background:var(--purple)">⬇ Export JSON</button><button class="btn-pull" id="es-import">⬆ Import JSON</button></div>'+
+      '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);font-family:var(--mono);margin-bottom:6px;">GitHub Token</div>'+
+      '<input class="fi" id="es-token" type="password" value="'+cfg.token+'" style="font-size:13px;font-family:var(--mono);" autocomplete="off" spellcheck="false">';
+  } else {
+    html =
+      '<a href="https://github.com/settings/tokens/new?scopes=gist&description=EMDTrack" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#fff;border-radius:10px;padding:12px 16px;font-size:14px;font-weight:700;text-decoration:none;margin-bottom:16px;">🔗 Open GitHub Token Page →</a>'+
+      '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;"><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">Steps:</div><div style="font-size:12px;color:var(--dim);line-height:1.9;"><b style="color:var(--text)">1.</b> Token name = EMDTrack<br><b style="color:var(--text)">2.</b> Expiration → No expiration<br><b style="color:var(--text)">3.</b> Select scopes → tick only <b style="color:var(--text)">gist</b> ✓<br><b style="color:var(--text)">4.</b> Click Generate token → Copy it</div></div>'+
+      '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--dim);font-family:var(--mono);margin-bottom:6px;">Paste token here</div>'+
+      '<input class="fi" id="es-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="font-size:13px;font-family:var(--mono);margin-bottom:12px;" autocomplete="off" spellcheck="false">'+
+      '<div style="font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:14px;">Tap Connect → Push. A private Gist is created automatically.</div>'+
+      '<div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--dim);font-family:var(--mono);margin-bottom:8px;">Or skip — Export / Import</div>'+
+      '<div style="display:flex;gap:8px;"><button class="btn-push" id="es-export" style="background:var(--purple)">⬇ Export JSON</button><button class="btn-pull" id="es-import">⬆ Import JSON</button></div>';
+  }
+  html += '<div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">'+(connected?'<button id="es-disc" class="btn-c" style="margin-right:auto;color:var(--red);border-color:rgba(224,90,78,.3)">Disconnect</button>':'')+'<button class="btn-c" onclick="closeM(\'modal-sync\')">Cancel</button><button class="btn-s" id="es-connect">'+(connected?'Save Token':'Connect')+'</button></div>';
+  body.innerHTML = html;
+  function wire(id,fn){ const el=document.getElementById(id); if(el) el.addEventListener('click',fn); }
+  wire('es-push',   function(){ closeM('modal-sync'); syncPush(); });
+  wire('es-pull',   function(){ closeM('modal-sync'); syncPull(); });
+  wire('es-export', exportData);
+  wire('es-import', importData);
+  wire('es-connect', function(){
+    const inp=document.getElementById('es-token'); if(!inp) return;
+    const token=inp.value.trim();
+    if(!token){ toast('Enter your GitHub token',true); return; }
+    if(!token.startsWith('ghp_')&&!token.startsWith('github_pat_')){ toast('Token should start with ghp_',true); return; }
+    const old=getSyncCfg();
+    const newCfg={token:token, gistId:token===old.token?(old.gistId||''):''};
+    saveSyncCfg(newCfg); setSyncDot('ok'); closeM('modal-sync'); toast('Token saved ✓');
+    if(!newCfg.gistId) syncPush(); else syncPull();
+  });
+  wire('es-disc', function(){
+    const btn=document.getElementById('es-disc'); if(!btn) return;
+    if(btn.dataset.armed==='1'){ saveSyncCfg({}); localStorage.removeItem('emd_last_sync'); setSyncDot(''); closeM('modal-sync'); toast('Sync disconnected'); }
+    else { btn.dataset.armed='1'; btn.textContent='Tap again to confirm'; setTimeout(function(){ if(btn){btn.dataset.armed='0';btn.textContent='Disconnect';}},2500); }
+  });
+  openM('modal-sync');
+}
 
 // ── HELPERS ───────────────────────────────────────────
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,5); }
@@ -673,230 +797,7 @@ let _tt; function toast(msg, err){
   clearTimeout(_tt); _tt = setTimeout(()=>el.className='toast',2800);
 }
 
-// ── SYNC — GitHub Gist ────────────────────────────────
-const EMD_SYNC_FILE = 'emdtrack-data.json';
-
-function getSyncCfg(){
-  try{ return JSON.parse(localStorage.getItem(SYNC_KEY)||'{}'); }catch(e){ return {}; }
-}
-function saveSyncCfg(cfg){ localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); }
-
-function setSyncDot(state){
-  const dot = document.getElementById('sync-dot');
-  const btn  = document.getElementById('btn-sync');
-  if(!dot||!btn) return;
-  dot.className = 'sync-dot' + (state?' '+state:'');
-  const cfg = getSyncCfg();
-  btn.className = 'btn-sync' + (cfg.token&&state==='ok'?' ok':'');
-}
-
-async function gistReq(method, path, body){
-  const cfg = getSyncCfg();
-  if(!cfg.token) throw new Error('No token');
-  const opts = {
-    method: method,
-    headers: {
-      'Authorization': 'Bearer ' + cfg.token,
-      'Accept': 'application/vnd.github+json',
-      'Content-Type': 'application/json',
-      'X-GitHub-Api-Version': '2022-11-28'
-    }
-  };
-  if(body) opts.body = JSON.stringify(body);
-  const res = await fetch('https://api.github.com' + path, opts);
-  if(!res.ok){
-    const err = await res.json().catch(function(){ return {}; });
-    throw new Error((err.message || res.statusText) + ' (' + res.status + ')');
-  }
-  return res.status === 204 ? {} : res.json();
-}
-
-async function syncPush(){
-  const cfg = getSyncCfg();
-  if(!cfg.token){ toast('Set up sync first', true); return; }
-  setSyncDot('busy');
-  try{
-    const files = {};
-    files[EMD_SYNC_FILE] = { content: JSON.stringify(tenders) };
-    let gistId = cfg.gistId;
-    if(!gistId){
-      const res = await gistReq('POST', '/gists', {
-        description: 'EMDTrack data — do not edit manually',
-        public: false, files: files
-      });
-      gistId = res.id;
-      cfg.gistId = gistId;
-      saveSyncCfg(cfg);
-    } else {
-      await gistReq('PATCH', '/gists/' + gistId, { files: files });
-    }
-    localStorage.setItem('emd_last_sync', Date.now().toString());
-    setSyncDot('ok'); toast('Pushed to Gist ✓');
-  } catch(e){
-    setSyncDot('err'); toast('Push failed: ' + e.message, true);
-    console.warn('EMD syncPush:', e);
-  }
-}
-
-async function syncPull(){
-  const cfg = getSyncCfg();
-  if(!cfg.token) return;
-  if(!cfg.gistId){ toast('Push first to create the Gist', true); return; }
-  setSyncDot('busy');
-  try{
-    const res  = await gistReq('GET', '/gists/' + cfg.gistId);
-    const file = res.files && res.files[EMD_SYNC_FILE];
-    if(!file) throw new Error('Data file not found in Gist');
-    let raw = file.content;
-    if(file.truncated){ const r = await fetch(file.raw_url); raw = await r.text(); }
-    const arr = JSON.parse(raw);
-    if(Array.isArray(arr) && arr.length > 0){
-      tenders = arr;
-      save(); render();
-      localStorage.setItem('emd_last_sync', Date.now().toString());
-      setSyncDot('ok'); toast('Pulled from Gist ✓');
-    } else {
-      setSyncDot('ok'); toast('Nothing to pull');
-    }
-  } catch(e){
-    setSyncDot('err'); toast('Pull failed: ' + e.message, true);
-    console.warn('EMD syncPull:', e);
-  }
-}
-
-function lastSyncText(){
-  const ts = localStorage.getItem('emd_last_sync');
-  if(!ts) return 'never';
-  const diff = Math.round((Date.now()-parseInt(ts))/60000);
-  if(diff < 1) return 'just now';
-  if(diff < 60) return diff+'m ago';
-  return Math.round(diff/60)+'h ago';
-}
-
-// ── One-time migration from old Google Sheets ─────────
-function migrateEMDFromSheets(url, statusEl){
-  const cbName = '_emd_migrate_' + Date.now();
-  let done = false;
-  const timer = setTimeout(function(){
-    if(done) return; done = true; cleanup();
-    statusEl.style.color='var(--red)'; statusEl.textContent='Timed out — check URL';
-  }, 20000);
-  function cleanup(){ clearTimeout(timer); delete window[cbName]; const s=document.getElementById('_emd_mig'); if(s&&s.parentNode) s.parentNode.removeChild(s); }
-  window[cbName] = function(data){
-    if(done) return; done = true; cleanup();
-    const arr = Array.isArray(data) ? data : null;
-    if(!arr||!arr.length){ statusEl.style.color='var(--yellow)'; statusEl.textContent='Sheet empty or no data'; return; }
-    let added=0;
-    arr.forEach(function(t){
-      if(!tenders.find(function(x){ return x.id===t.id||x.no.toLowerCase()===t.no.toLowerCase(); })){
-        tenders.unshift(t); added++;
-      }
-    });
-    save(); render();
-    statusEl.style.color='var(--green)'; statusEl.textContent='✓ Added '+added+' records. Connect & Push to Gist.';
-  };
-  const script = document.createElement('script');
-  script.id='_emd_mig';
-  script.onerror=function(){ if(done)return; done=true; cleanup(); statusEl.style.color='var(--red)'; statusEl.textContent='Could not reach URL'; };
-  script.src=url+(url.includes('?')?'&':'?')+'cb='+cbName;
-  document.head.appendChild(script);
-}
-
-function openSync(){
-  const cfg = getSyncCfg();
-  const connected = !!(cfg.token);
-  const body = document.getElementById('sync-body');
-  let html = '';
-  if(connected){
-    html =
-      '<div class="sync-url-box">✓ Connected · Last sync: '+lastSyncText()+'</div>'+
-      (cfg.gistId ? '<div style="font-size:11px;color:var(--dim);font-family:var(--mono);margin-bottom:12px;word-break:break-all">Gist: <a href="https://gist.github.com/'+cfg.gistId+'" target="_blank" style="color:var(--accent)">'+cfg.gistId.slice(0,20)+'…</a></div>' : '<p style="font-size:12px;color:var(--yellow);margin-bottom:14px;">⚠ No Gist yet — Push to create one.</p>')+
-      '<button class="btn-push" id="es-push">⬆ Push to Gist</button>'+
-      '<button class="btn-pull" id="es-pull">⬇ Pull from Gist</button>'+
-      '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--green);font-family:var(--mono);padding:14px 0 8px;border-top:1px solid var(--border);margin-top:6px;">GitHub Token</div>'+
-      '<input class="fi" id="es-token" type="password" value="'+cfg.token+'" placeholder="ghp_…" style="font-size:13px;font-family:var(--mono);margin-bottom:12px;">';
-  } else {
-    html =
-      '<a href="https://github.com/settings/tokens/new?scopes=gist&description=EMDTrack" target="_blank" '+
-        'style="display:flex;align-items:center;justify-content:center;gap:8px;'+
-        'background:var(--green);color:#fff;border:none;border-radius:10px;'+
-        'padding:12px 16px;font-family:var(--sans);font-size:14px;font-weight:700;'+
-        'text-decoration:none;margin-bottom:16px;cursor:pointer;">'+
-        '🔗 Open GitHub Token Page →'+
-      '</a>'+
-      '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;">'+
-        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">Follow these steps on that page:</div>'+
-        '<div style="font-size:12px;color:var(--dim);line-height:1.9;">'+
-          '<b style="color:var(--text)">1.</b> Token name is already filled as "EMDTrack"<br>'+
-          '<b style="color:var(--text)">2.</b> Set Expiration → <b style="color:var(--text)">No expiration</b><br>'+
-          '<b style="color:var(--text)">3.</b> Under Select scopes → tick only <b style="color:var(--text)">gist</b> ✓<br>'+
-          '<b style="color:var(--text)">4.</b> Click <b style="color:var(--text)">Generate token</b><br>'+
-          '<b style="color:var(--text)">5.</b> Copy the token (starts with <code style="font-family:var(--mono);background:var(--muted);padding:1px 5px;border-radius:4px;">ghp_</code>)'+
-        '</div>'+
-      '</div>'+
-      '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);font-family:var(--mono);margin-bottom:6px;">Paste token here</div>'+
-      '<input class="fi" id="es-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" '+
-        'style="font-size:13px;font-family:var(--mono);margin-bottom:12px;" autocomplete="off" spellcheck="false">'+
-      '<div style="font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:14px;">'+
-        'After connecting tap <b style="color:var(--text)">Push</b> — a private Gist is created automatically.<br>'+
-        'On other devices: same token → Pull.'+
-      '</div>'+
-      '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--green);font-family:var(--mono);padding:10px 0 6px;border-top:1px solid var(--border);">Had Google Sheets sync before?</div>'+
-      '<div style="font-size:12px;color:var(--dim);margin-bottom:8px;line-height:1.6">Your local data is safe. Paste old Apps Script URL to pull once.</div>'+
-      '<div style="display:flex;gap:8px;margin-bottom:4px;"><input class="fi" id="es-old-url" placeholder="https://script.google.com/…" style="font-size:12px;flex:1;"><button class="btn-pull" id="es-migrate" style="white-space:nowrap;flex-shrink:0;">Pull once</button></div>'+
-      '<div id="es-mig-status" style="font-size:11px;color:var(--dim);font-family:var(--mono);min-height:16px;margin-bottom:10px;"></div>';
-  }
-
-  html += '<div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">'+
-    (connected?'<button id="es-disc" class="btn-c" style="margin-right:auto;color:var(--red);border-color:rgba(224,90,78,.3)">Disconnect</button>':'')+
-    '<button class="btn-c" onclick="closeM(\'modal-sync\')">Cancel</button>'+
-    '<button class="btn-s" id="es-connect">'+(connected?'Save Token':'Connect')+'</button>'+
-  '</div>';
-
-  body.innerHTML = html;
-
-  function wire(id, fn){ const el=document.getElementById(id); if(el) el.addEventListener('click',fn); }
-
-  wire('es-push', function(){ closeM('modal-sync'); syncPush(); });
-  wire('es-pull', function(){ closeM('modal-sync'); syncPull(); });
-
-  wire('es-connect', function(){
-    const inp = document.getElementById('es-token');
-    if(!inp) return;
-    const token = inp.value.trim();
-    if(!token){ toast('Enter your GitHub token', true); return; }
-    if(!token.startsWith('ghp_')&&!token.startsWith('github_pat_')){ toast('Token should start with ghp_ or github_pat_', true); return; }
-    const old = getSyncCfg();
-    const newCfg = {token:token, gistId: token===old.token?(old.gistId||''):''};
-    saveSyncCfg(newCfg);
-    setSyncDot('ok'); closeM('modal-sync'); toast('Token saved ✓');
-    if(!newCfg.gistId) syncPush(); else syncPull();
-  });
-
-  wire('es-migrate', function(){
-    const urlEl=document.getElementById('es-old-url');
-    const statusEl=document.getElementById('es-mig-status');
-    if(!urlEl||!statusEl) return;
-    const url=urlEl.value.trim();
-    if(!url||!url.includes('script.google.com')){ statusEl.style.color='var(--red)'; statusEl.textContent='Enter a valid Apps Script URL'; return; }
-    statusEl.style.color='var(--dim)'; statusEl.textContent='⏳ Pulling…';
-    migrateEMDFromSheets(url, statusEl);
-  });
-
-  wire('es-disc', function(){
-    const btn=document.getElementById('es-disc'); if(!btn) return;
-    if(btn.dataset.armed==='1'){
-      saveSyncCfg({}); localStorage.removeItem('emd_last_sync');
-      setSyncDot(''); closeM('modal-sync'); toast('Sync disconnected');
-    } else {
-      btn.dataset.armed='1'; btn.textContent='Tap again to confirm';
-      setTimeout(function(){ if(btn){btn.dataset.armed='0';btn.textContent='Disconnect';} },2500);
-    }
-  });
-
-  openM('modal-sync');
-}
-
+// ── SYNC ──────────────────────────────────────────────
 // ── EXPORT TO EXCEL ───────────────────────────────────
 function exportExcel(){
   if(!tenders.length){ toast('No data to export', true); return; }
@@ -944,10 +845,11 @@ function exportExcel(){
   toast('Exported to Excel ✓');
 }
 
-// ── INIT ──────────────────────────────────────────────
+// -- INIT -------------------------------------------------------
 load();
 const _emdCfg = getSyncCfg();
-if(_emdCfg.token && _emdCfg.gistId){ setSyncDot('ok'); syncPull(); }
+setSyncDot(_emdCfg.token ? 'ok' : '');
+if(_emdCfg.token && _emdCfg.gistId) syncPull();
 </script>
 </body>
 </html>
