@@ -1,5 +1,6 @@
 // TenderTrack + EMDTrack Service Worker
-const CACHE = 'tt-emd-v2';
+// Sync: GitHub Gist (fetch API) — no Apps Script needed
+const CACHE = 'tt-emd-v3';
 const SHELL = [
   './tendertrack.html',
   './emd.html',
