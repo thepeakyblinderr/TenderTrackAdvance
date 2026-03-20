@@ -2406,71 +2406,6 @@ function importData(){
 }
 
 // ── One-time migration from old Google Sheets sync ───
-function migrateFromSheets(url, statusEl){
-  // Uses a minimal JSONP call — only needed once for migration
-  const cbName = '_tt_migrate_' + Date.now();
-  let done = false;
-
-  const timer = setTimeout(function(){
-    if(done) return; done = true;
-    cleanup();
-    statusEl.style.color = 'var(--red)';
-    statusEl.textContent = '✗ Timed out — check the URL and try again';
-  }, 20000);
-
-  function cleanup(){
-    clearTimeout(timer);
-    delete window[cbName];
-    const s = document.getElementById('_jsonp_migrate');
-    if(s && s.parentNode) s.parentNode.removeChild(s);
-  }
-
-  window[cbName] = function(data){
-    if(done) return; done = true;
-    cleanup();
-    try{
-      const arr = Array.isArray(data) ? data : null;
-      if(!arr || arr.length === 0){
-        statusEl.style.color = 'var(--yellow)';
-        statusEl.textContent = '⚠ Sheet is empty or returned no data';
-        return;
-      }
-      // Merge: keep local tenders, add any from Sheets that don't exist locally
-      let added = 0, updated = 0;
-      arr.forEach(function(remote){
-        const t = expandSlim(remote);
-        const existing = tenders.find(function(x){ return x.id === t.id || x.no.toLowerCase() === t.no.toLowerCase(); });
-        if(!existing){
-          tenders.unshift(t);
-          added++;
-        } else {
-          // Only update if remote has more stages or newer data
-          if(t.stages.length > existing.stages.length){
-            Object.assign(existing, t);
-            updated++;
-          }
-        }
-      });
-      save(); render();
-      statusEl.style.color = 'var(--green)';
-      statusEl.textContent = '✓ Done — added ' + added + ', updated ' + updated + ' tenders. Now Connect & Push to Gist.';
-    } catch(e){
-      statusEl.style.color = 'var(--red)';
-      statusEl.textContent = '✗ Failed to parse data: ' + e.message;
-    }
-  };
-
-  const script = document.createElement('script');
-  script.id = '_jsonp_migrate';
-  script.onerror = function(){
-    if(done) return; done = true;
-    cleanup();
-    statusEl.style.color = 'var(--red)';
-    statusEl.textContent = '✗ Could not reach the Apps Script URL';
-  };
-  script.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + cbName;
-  document.head.appendChild(script);
-}
 
 // ── Sync modal ────────────────────────────────────────
 function openSync(){
@@ -2538,15 +2473,6 @@ function openSync(){
         'After connecting, tap <b style="color:var(--text)">Push</b> once. A private Gist is created automatically.<br>'+
         'On other devices: enter the same token and tap <b style="color:var(--text)">Pull</b>.'+
       '</div>'+
-      '<div class="fsec">Had Google Sheets sync before?</div>'+
-      '<div style="font-size:12px;color:var(--dim);margin-bottom:8px;line-height:1.6">'+
-        'Your local data is already safe. If your Google Sheet had newer data, paste the old Apps Script URL below and pull it in once.'+
-      '</div>'+
-      '<div style="display:flex;gap:8px;margin-bottom:4px;">'+
-        '<input class="fi" id="sp-old-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:12px;flex:1;">'+
-        '<button class="btn-pull" id="sp-migrate" style="white-space:nowrap;flex-shrink:0;">Pull once</button>'+
-      '</div>'+
-      '<div id="sp-migrate-status" style="font-size:11px;color:var(--dim);font-family:var(--mono);margin-bottom:10px;min-height:16px;"></div>'+
       '<div class="fsec">Or skip accounts — Export / Import</div>'+
       '<div class="sync-acts" style="margin-top:8px">'+
         '<button class="btn-push" id="sp-export" style="background:var(--purple)">⬇ Export JSON</button>'+
@@ -2566,20 +2492,6 @@ function openSync(){
   function wire(id, fn){ const el = document.getElementById(id); if(el) el.addEventListener('click', fn); }
 
   // Wire old Google Sheets one-time migration
-  wire('sp-migrate', function(){
-    const urlEl = document.getElementById('sp-old-url');
-    const statusEl = document.getElementById('sp-migrate-status');
-    if(!urlEl || !statusEl) return;
-    const url = urlEl.value.trim();
-    if(!url || !url.includes('script.google.com')){
-      statusEl.style.color = 'var(--red)';
-      statusEl.textContent = 'Enter a valid Google Apps Script URL';
-      return;
-    }
-    statusEl.style.color = 'var(--dim)';
-    statusEl.textContent = '⏳ Pulling from Google Sheets…';
-    migrateFromSheets(url, statusEl);
-  });
 
   wire('sp-push',   function(){ closeM('modal-sync'); syncPush(); });
   wire('sp-pull',   function(){ closeM('modal-sync'); syncPull(); });
