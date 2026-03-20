@@ -790,14 +790,12 @@ const STAGES = [
 
 const KEY = 'tt_v12';
 const SNOOZE_KEY = 'tt_snooze';
-const SYNC_KEY = 'tt_sync_url';
 const FU_KEY = 'tt_followup';
 
 let tenders = [];
 let editId = null;
 let fuId = null;
 let pFilter = '';
-let syncUrl = localStorage.getItem(SYNC_KEY) || '';
 
 // ── HELPERS ───────────────────────────────────────────
 function sg(id){ return STAGES.find(s => s.id === id) || STAGES[0]; }
@@ -2232,283 +2230,398 @@ function toast(msg, err){
 }
 
 // ── GOOGLE SHEETS SYNC ────────────────────────────────
-// Apps Script handles CORS by accepting data via GET param (jsonp-style push)
-// and returning JSONP for pull — both bypass CORS entirely.
-const APPS_SCRIPT =
-`function doGet(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName('TenderData');
-  if (!sh) sh = ss.insertSheet('TenderData');
-  var cb = e.parameter.cb || 'callback';
-  var action = e.parameter.action || 'read';
+// ── SYNC — GitHub Gist + Export/Import ──────────────
+// Uses GitHub Gist API: standard fetch, proper CORS, free.
+// Setup: create a GitHub Personal Access Token with "gist" scope only.
+// https://github.com/settings/tokens/new?scopes=gist&description=TenderTrack
 
-  if (action === 'chunk') {
-    var i = parseInt(e.parameter.i || '0');
-    sh.getRange(2 + i, 2).setValue(e.parameter.d || '');
-    sh.getRange(1, 2).setValue(e.parameter.total || '1');
-    return ContentService.createTextOutput(cb + '({"ok":true})').setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
+const SYNC_KEY  = 'tt_sync_cfg';
+const SYNC_FILE = 'tendertrack-data.json';
 
-  if (action === 'commit') {
-    var total = parseInt(sh.getRange(1, 2).getValue() || '1');
-    var parts = [];
-    for (var i = 0; i < total; i++) parts.push(sh.getRange(2 + i, 2).getValue() || '');
-    sh.getRange(1, 1).setValue(parts.join(''));
-    sh.getRange(1, 2, total + 1, 1).clearContent();
-    return ContentService.createTextOutput(cb + '({"ok":true})').setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-
-  var data = sh.getRange(1, 1).getValue() || '[]';
-  return ContentService.createTextOutput(cb + '(' + data + ')').setMimeType(ContentService.MimeType.JAVASCRIPT);
+function getSyncCfg(){
+  try{ return JSON.parse(localStorage.getItem(SYNC_KEY)||'{}'); }catch(e){ return {}; }
 }
-`;
+function saveSyncCfg(cfg){ localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); }
 
 function setSyncDot(state){
   const dot = document.getElementById('sync-dot');
   const btn  = document.getElementById('btn-sync');
   if(!dot||!btn) return;
   dot.className = 'sync-dot' + (state!=='idle'?' '+state:'');
-  btn.className  = 'btn-sync' + (syncUrl&&state==='ok'?' ok':'');
+  const cfg = getSyncCfg();
+  btn.className  = 'btn-sync' + (cfg.token&&state==='ok'?' ok':'');
 }
 
+// ── Slim/expand payload (same field mapping) ──────────
+function buildSlim(){
+  return tenders.map(function(t){
+    const o = {id:t.id, no:t.no, stages:t.stages};
+    if(t.stageEnteredAt && Object.keys(t.stageEnteredAt).length) o.sea = t.stageEnteredAt;
+    if(t.priority) o.p   = t.priority;
+    if(t.isAF)     o.af  = true;
+    if(t.notes)    o.n   = t.notes;
+    if(t.emd)      o.e   = t.emd;
+    if(t.saleEnd)  o.s   = t.saleEnd;
+    if(t.techBid)  o.tb  = t.techBid;
+    if(t.priceBid) o.pb  = t.priceBid;
+    if(t.ra)       o.ra  = t.ra;
+    if(t.validity) o.v   = t.validity;
+    if(t.tcq)      o.q   = t.tcq;
+    if(t.stageAssigned && Object.keys(t.stageAssigned).length) o.sa = t.stageAssigned;
+    if(t.stageAssignHistory && Object.keys(t.stageAssignHistory).length) o.sah = t.stageAssignHistory;
+    return o;
+  });
+}
+
+function expandSlim(t){
+  return {
+    id:t.id, no:t.no,
+    stages:             t.stages || [],
+    stageEnteredAt:     t.sea || t.stageEnteredAt || {},
+    priority:           t.p   || t.priority || '',
+    isAF:               !!(t.af || t.isAF),
+    notes:              t.n   || t.notes    || '',
+    emd:                t.e   || t.emd      || '',
+    saleEnd:            t.s   || t.saleEnd  || '',
+    techBid:            t.tb  || t.techBid  || '',
+    priceBid:           t.pb  || t.priceBid || '',
+    ra:                 t.ra  || '',
+    validity:           t.v   || t.validity || '',
+    tcq:                t.q   || t.tcq      || '',
+    stageAssigned:      t.sa  || t.stageAssigned || {},
+    stageAssignHistory: t.sah || t.stageAssignHistory || {},
+  };
+}
+
+// ── Gist API ──────────────────────────────────────────
+async function gistReq(method, path, body){
+  const cfg = getSyncCfg();
+  if(!cfg.token) throw new Error('No token');
+  const opts = {
+    method: method,
+    headers: {
+      'Authorization': 'Bearer ' + cfg.token,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    }
+  };
+  if(body) opts.body = JSON.stringify(body);
+  const res = await fetch('https://api.github.com' + path, opts);
+  if(!res.ok){
+    const err = await res.json().catch(function(){ return {}; });
+    throw new Error((err.message || res.statusText) + ' (' + res.status + ')');
+  }
+  return res.status === 204 ? {} : res.json();
+}
+
+async function syncPush(){
+  const cfg = getSyncCfg();
+  if(!cfg.token){ toast('Set up sync first', true); return; }
+  setSyncDot('busy');
+  try{
+    const files = {};
+    files[SYNC_FILE] = { content: JSON.stringify(buildSlim()) };
+    let gistId = cfg.gistId;
+    if(!gistId){
+      const res = await gistReq('POST', '/gists', {
+        description: 'TenderTrack data — do not edit manually',
+        public: false, files: files
+      });
+      gistId = res.id;
+      cfg.gistId = gistId;
+      saveSyncCfg(cfg);
+    } else {
+      await gistReq('PATCH', '/gists/' + gistId, { files: files });
+    }
+    localStorage.setItem('tt_last_sync', Date.now().toString());
+    setSyncDot('ok'); toast('Pushed to Gist ✓');
+  } catch(e){
+    setSyncDot('err'); toast('Push failed: ' + e.message, true);
+    console.warn('syncPush:', e);
+  }
+}
+
+async function syncPull(){
+  const cfg = getSyncCfg();
+  if(!cfg.token) return;
+  if(!cfg.gistId){ toast('Push first to create the Gist', true); return; }
+  setSyncDot('busy');
+  try{
+    const res  = await gistReq('GET', '/gists/' + cfg.gistId);
+    const file = res.files && res.files[SYNC_FILE];
+    if(!file) throw new Error('Data file not found in Gist');
+    let raw = file.content;
+    if(file.truncated){
+      const r = await fetch(file.raw_url);
+      raw = await r.text();
+    }
+    const arr = JSON.parse(raw);
+    if(Array.isArray(arr) && arr.length > 0){
+      tenders = arr.map(expandSlim);
+      save(); render();
+      localStorage.setItem('tt_last_sync', Date.now().toString());
+      setSyncDot('ok'); toast('Pulled from Gist ✓');
+    } else {
+      setSyncDot('ok'); toast('Nothing to pull');
+    }
+  } catch(e){
+    setSyncDot('err'); toast('Pull failed: ' + e.message, true);
+    console.warn('syncPull:', e);
+  }
+}
+
+// ── Export / Import ───────────────────────────────────
+function exportData(){
+  const data = JSON.stringify(buildSlim(), null, 2);
+  const blob = new Blob([data], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'tendertrack-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  toast('Exported ✓');
+}
+
+function importData(){
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = '.json';
+  input.addEventListener('change', function(){
+    const file = input.files[0]; if(!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev){
+      try{
+        const arr = JSON.parse(ev.target.result);
+        if(!Array.isArray(arr)) throw new Error('Not a valid export file');
+        if(tenders.length > 0 && !confirm('Replace all ' + tenders.length + ' tenders with imported data?')) return;
+        tenders = arr.map(expandSlim);
+        save(); render();
+        toast('Imported ' + tenders.length + ' tenders ✓');
+      } catch(err){ toast('Import failed: ' + err.message, true); }
+    };
+    reader.readAsText(file);
+  });
+  input.click();
+}
+
+// ── One-time migration from old Google Sheets sync ───
+function migrateFromSheets(url, statusEl){
+  // Uses a minimal JSONP call — only needed once for migration
+  const cbName = '_tt_migrate_' + Date.now();
+  let done = false;
+
+  const timer = setTimeout(function(){
+    if(done) return; done = true;
+    cleanup();
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = '✗ Timed out — check the URL and try again';
+  }, 20000);
+
+  function cleanup(){
+    clearTimeout(timer);
+    delete window[cbName];
+    const s = document.getElementById('_jsonp_migrate');
+    if(s && s.parentNode) s.parentNode.removeChild(s);
+  }
+
+  window[cbName] = function(data){
+    if(done) return; done = true;
+    cleanup();
+    try{
+      const arr = Array.isArray(data) ? data : null;
+      if(!arr || arr.length === 0){
+        statusEl.style.color = 'var(--yellow)';
+        statusEl.textContent = '⚠ Sheet is empty or returned no data';
+        return;
+      }
+      // Merge: keep local tenders, add any from Sheets that don't exist locally
+      let added = 0, updated = 0;
+      arr.forEach(function(remote){
+        const t = expandSlim(remote);
+        const existing = tenders.find(function(x){ return x.id === t.id || x.no.toLowerCase() === t.no.toLowerCase(); });
+        if(!existing){
+          tenders.unshift(t);
+          added++;
+        } else {
+          // Only update if remote has more stages or newer data
+          if(t.stages.length > existing.stages.length){
+            Object.assign(existing, t);
+            updated++;
+          }
+        }
+      });
+      save(); render();
+      statusEl.style.color = 'var(--green)';
+      statusEl.textContent = '✓ Done — added ' + added + ', updated ' + updated + ' tenders. Now Connect & Push to Gist.';
+    } catch(e){
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = '✗ Failed to parse data: ' + e.message;
+    }
+  };
+
+  const script = document.createElement('script');
+  script.id = '_jsonp_migrate';
+  script.onerror = function(){
+    if(done) return; done = true;
+    cleanup();
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = '✗ Could not reach the Apps Script URL';
+  };
+  script.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + cbName;
+  document.head.appendChild(script);
+}
+
+// ── Sync modal ────────────────────────────────────────
 function openSync(){
-  const configured = !!syncUrl;
-  const lastSync   = localStorage.getItem('tt_last_sync');
-  const lsStr = lastSync ? new Date(+lastSync).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : 'Never';
+  const cfg       = getSyncCfg();
+  const connected = !!(cfg.token);
+  const lastSync  = localStorage.getItem('tt_last_sync');
+  const lsStr     = lastSync
+    ? new Date(+lastSync).toLocaleString('en-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})
+    : 'Never';
 
   let html = '';
-  if(configured){
+
+  if(connected){
     html =
-      '<div class="sync-bar"><span class="sync-dot ok"></span><span>Connected · Last sync: <b>'+lsStr+'</b></span></div>'+
-      '<div class="sync-acts">'+
-        '<button class="btn-push" onclick="syncPush()">⬆ Push to Cloud</button>'+
-        '<button class="btn-pull" onclick="syncPull()">⬇ Pull from Cloud</button>'+
+      '<div class="sync-bar">'+
+        '<span class="sync-dot ok"></span>'+
+        '<span>Connected · Last sync: <b>' + lsStr + '</b></span>'+
       '</div>'+
-      '<p style="font-size:12px;color:var(--dim);margin-bottom:14px;line-height:1.6">'+
-        '<b style="color:var(--text)">Push</b> — uploads your local data to Google Sheets.<br>'+
-        '<b style="color:var(--text)">Pull</b> — loads data from Google Sheets to this device.'+
-      '</p>'+
-      '<div class="fsec" style="border-top:none;padding-top:0">Web App URL</div>'+
-      '<div class="frow"><input class="fi" id="sync-url-input" value="'+esc(syncUrl)+'" style="font-size:12px;"></div>'+
-      '<div class="sync-warn">⚠ Auto-pull runs each time you open the app, so both devices stay in sync.</div>';
+      (cfg.gistId
+        ? '<p style="font-size:11px;color:var(--dim);font-family:var(--mono);margin-bottom:14px;word-break:break-all">'+
+            'Gist ID: <a href="https://gist.github.com/' + esc(cfg.gistId) + '" target="_blank" style="color:var(--accent)">'+
+            esc(cfg.gistId.slice(0,20)) + '…</a></p>'
+        : '<p style="font-size:12px;color:var(--yellow);margin-bottom:14px;">⚠ No Gist yet — tap Push to create one.</p>'
+      )+
+      '<div class="sync-acts">'+
+        '<button class="btn-push" id="sp-push">⬆ Push to Gist</button>'+
+        '<button class="btn-pull" id="sp-pull">⬇ Pull from Gist</button>'+
+      '</div>'+
+      '<div class="fsec">Export / Import (no account needed)</div>'+
+      '<div class="sync-acts">'+
+        '<button class="btn-push" id="sp-export" style="background:var(--purple)">⬇ Export JSON</button>'+
+        '<button class="btn-pull" id="sp-import">⬆ Import JSON</button>'+
+      '</div>'+
+      '<div class="fsec">GitHub Token</div>'+
+      '<div class="frow" style="margin-bottom:0">'+
+        '<input class="fi" id="sp-token" type="password" value="' + esc(cfg.token||'') + '" '+
+          'placeholder="ghp_…" style="font-size:13px;font-family:var(--mono);">'+
+      '</div>';
   } else {
     html =
-      '<div class="sync-step"><div class="sync-step-num">1</div><div class="sync-step-body">'+
-        '<div class="sync-step-title">Create a new Google Sheet</div>'+
-        '<div class="sync-step-desc">Go to <a href="https://sheets.google.com" target="_blank">sheets.google.com</a> → click <b>Blank</b>.</div>'+
-      '</div></div>'+
-      '<div class="sync-step"><div class="sync-step-num">2</div><div class="sync-step-body">'+
-        '<div class="sync-step-title">Open Apps Script</div>'+
-        '<div class="sync-step-desc">Click <b>Extensions → Apps Script</b>. Delete all existing code and paste this:</div>'+
-        '<div class="sync-code" onclick="copyScript()" id="sync-code-block"></div>'+
-      '</div></div>'+
-      '<div class="sync-step"><div class="sync-step-num">3</div><div class="sync-step-body">'+
-        '<div class="sync-step-title">Deploy as Web App</div>'+
-        '<div class="sync-step-desc">Click <b>Deploy → New deployment</b>. Type: <b>Web app</b>. Execute as: <b>Me</b>. Access: <b>Anyone</b>. Click Deploy and authorize.</div>'+
-      '</div></div>'+
-      '<div class="sync-step"><div class="sync-step-num">4</div><div class="sync-step-body">'+
-        '<div class="sync-step-title">Paste your Web App URL</div>'+
-        '<div class="sync-step-desc">Copy the URL shown after deployment:</div>'+
-        '<div class="frow" style="margin-top:8px;margin-bottom:0">'+
-          '<input class="fi" id="sync-url-input" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:12px;">'+
+      // Big direct button — most people miss the link in text
+      '<a href="https://github.com/settings/tokens/new?scopes=gist&description=TenderTrack" target="_blank" '+
+        'style="display:flex;align-items:center;justify-content:center;gap:8px;'+
+        'background:var(--purple);color:#fff;border:none;border-radius:10px;'+
+        'padding:12px 16px;font-family:var(--sans);font-size:14px;font-weight:700;'+
+        'text-decoration:none;margin-bottom:16px;cursor:pointer;">'+
+        '🔗 Open GitHub Token Page →'+
+      '</a>'+
+      '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;">'+
+        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">Follow these steps on that page:</div>'+
+        '<div style="font-size:12px;color:var(--dim);line-height:1.9;">'+
+          '<b style="color:var(--text)">1.</b> Scroll down to <b style="color:var(--text)">Token name</b> — it\'s already filled as "TenderTrack"<br>'+
+          '<b style="color:var(--text)">2.</b> Set <b style="color:var(--text)">Expiration</b> — choose <b style="color:var(--text)">No expiration</b><br>'+
+          '<b style="color:var(--text)">3.</b> Under <b style="color:var(--text)">Select scopes</b> — tick only <b style="color:var(--text)">gist</b> ✓<br>'+
+          '<b style="color:var(--text)">4.</b> Scroll to bottom → click <b style="color:var(--text)">Generate token</b><br>'+
+          '<b style="color:var(--text)">5.</b> Copy the token shown (starts with <code style="font-family:var(--mono);background:var(--muted);padding:1px 5px;border-radius:4px;">ghp_</code>)'+
         '</div>'+
-      '</div></div>';
+      '</div>'+
+      '<div class="sync-step-num" style="width:auto;height:auto;border-radius:0;background:none;border:none;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);font-family:var(--mono);padding:0 0 6px;display:block;">Paste token here</div>'+
+      '<div class="frow" style="margin-bottom:14px;">'+
+        '<input class="fi" id="sp-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" '+
+          'style="font-size:13px;font-family:var(--mono);" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">'+
+      '</div>'+
+      '<div style="font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:14px;">'+
+        'After connecting, tap <b style="color:var(--text)">Push</b> once. A private Gist is created automatically.<br>'+
+        'On other devices: enter the same token and tap <b style="color:var(--text)">Pull</b>.'+
+      '</div>'+
+      '<div class="fsec">Had Google Sheets sync before?</div>'+
+      '<div style="font-size:12px;color:var(--dim);margin-bottom:8px;line-height:1.6">'+
+        'Your local data is already safe. If your Google Sheet had newer data, paste the old Apps Script URL below and pull it in once.'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;margin-bottom:4px;">'+
+        '<input class="fi" id="sp-old-url" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:12px;flex:1;">'+
+        '<button class="btn-pull" id="sp-migrate" style="white-space:nowrap;flex-shrink:0;">Pull once</button>'+
+      '</div>'+
+      '<div id="sp-migrate-status" style="font-size:11px;color:var(--dim);font-family:var(--mono);margin-bottom:10px;min-height:16px;"></div>'+
+      '<div class="fsec">Or skip accounts — Export / Import</div>'+
+      '<div class="sync-acts" style="margin-top:8px">'+
+        '<button class="btn-push" id="sp-export" style="background:var(--purple)">⬇ Export JSON</button>'+
+        '<button class="btn-pull" id="sp-import">⬆ Import JSON</button>'+
+      '</div>';
   }
 
   html +=
     '<div class="mfoot" style="padding-top:14px;border-top:1px solid var(--border)">'+
-      (configured?'<button id="btn-disconnect" class="btn-c" onclick="disconnectSync()" style="margin-right:auto;color:#f87171;border-color:rgba(239,68,68,.3)">Disconnect</button>':'')+
+      (connected ? '<button id="sp-disc" class="btn-c" style="margin-right:auto;color:var(--red);border-color:rgba(224,90,78,.3)">Disconnect</button>' : '')+
       '<button class="btn-c" onclick="closeM(\'modal-sync\')">Cancel</button>'+
-      '<button class="btn-s" onclick="saveSync()">'+(configured?'Save':'Connect')+'</button>'+
+      '<button class="btn-s" id="sp-connect">' + (connected ? 'Save Token' : 'Connect') + '</button>'+
     '</div>';
 
   document.getElementById('sync-body').innerHTML = html;
-  // Set script text safely (avoids XSS from esc() and shows real newlines)
-  const codeEl = document.getElementById('sync-code-block');
-  if(codeEl) codeEl.textContent = APPS_SCRIPT;
-  openM('modal-sync');
-}
 
-function copyScript(){
-  navigator.clipboard.writeText(APPS_SCRIPT).then(function(){ toast('Script copied!'); }).catch(function(){
-    const el = document.createElement('textarea');
-    el.value = APPS_SCRIPT; document.body.appendChild(el); el.select();
-    document.execCommand('copy'); document.body.removeChild(el);
-    toast('Script copied!');
-  });
-}
+  function wire(id, fn){ const el = document.getElementById(id); if(el) el.addEventListener('click', fn); }
 
-function saveSync(){
-  const inp = document.getElementById('sync-url-input');
-  if(!inp) return;
-  const val = inp.value.trim();
-  if(!val){ toast('Please enter the Web App URL', true); return; }
-  if(!val.includes('script.google.com')){ toast('URL should be from script.google.com', true); return; }
-  syncUrl = val;
-  localStorage.setItem(SYNC_KEY, syncUrl);
-  toast('Connected ✓');
-  closeM('modal-sync');
-  syncPull();
-}
-
-function disconnectSync(){
-  const btn = document.getElementById('btn-disconnect');
-  if(btn && btn.dataset.armed === '1'){
-    syncUrl = '';
-    localStorage.removeItem(SYNC_KEY);
-    localStorage.removeItem('tt_last_sync');
-    setSyncDot('idle');
-    closeM('modal-sync');
-    toast('Sync disconnected');
-  } else if(btn) {
-    btn.dataset.armed = '1';
-    btn.textContent = 'Tap again to confirm';
-    btn.style.color = 'var(--red)';
-    setTimeout(()=>{ btn.dataset.armed='0'; btn.textContent='Disconnect'; btn.style.color=''; }, 2500);
-  }
-}
-
-// JSONP helper — injects a <script> tag, calls back, then removes it
-function jsonp(url, cbName, timeout){
-  return new Promise(function(resolve, reject){
-    const id = cbName || ('_tt_cb_' + Date.now());
-    let done = false;
-    const timer = setTimeout(function(){
-      if(done) return; done = true;
-      delete window[id];
-      const s = document.getElementById('_jsonp_'+id);
-      if(s) s.parentNode.removeChild(s);
-      reject(new Error('timeout'));
-    }, timeout || 12000);
-
-    window[id] = function(data){
-      if(done) return; done = true;
-      clearTimeout(timer);
-      delete window[id];
-      const s = document.getElementById('_jsonp_'+id);
-      if(s) s.parentNode.removeChild(s);
-      resolve(data);
-    };
-
-    const script = document.createElement('script');
-    script.id = '_jsonp_' + id;
-    script.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + id;
-    script.onerror = function(){
-      if(done) return; done = true;
-      clearTimeout(timer);
-      delete window[id];
-      reject(new Error('script error'));
-    };
-    document.head.appendChild(script);
-  });
-}
-
-async function syncPush(){
-  if(!syncUrl) return;
-  setSyncDot('busy');
-  try{
-    // Serialize with short keys to minimize size
-    const slim = tenders.map(function(t){
-      const o = {id:t.id, no:t.no, stages:t.stages};
-      if(t.stageEnteredAt && Object.keys(t.stageEnteredAt).length) o.sea = t.stageEnteredAt;
-      if(t.priority) o.p  = t.priority;
-      if(t.isAF)     o.af = true;
-      if(t.notes)    o.n  = t.notes;
-      if(t.emd)      o.e  = t.emd;
-      if(t.saleEnd)  o.s  = t.saleEnd;
-      if(t.techBid)  o.tb = t.techBid;
-      if(t.priceBid) o.pb = t.priceBid;
-      if(t.ra)       o.ra = t.ra;
-      if(t.validity) o.v  = t.validity;
-      if(t.tcq)      o.q  = t.tcq;
-      if(t.stageAssigned && Object.keys(t.stageAssigned).length) o.sa = t.stageAssigned;
-      if(t.stageAssignHistory && Object.keys(t.stageAssignHistory).length) o.sah = t.stageAssignHistory;
-      return o;
-    });
-
-    // Split into chunks — keep small enough that encodeURIComponent
-    // doesn't blow past Google Apps Script's ~8000 char URL limit.
-    // JSON chars like {}[]:, encode to 3 chars each, so 1500 raw ~ 4500 encoded — safe.
-    const full = JSON.stringify(slim);
-    const CHUNK = 1500;
-    const chunks = [];
-    for(let i = 0; i < full.length; i += CHUNK){
-      chunks.push(full.slice(i, i + CHUNK));
-    }
-    const total = chunks.length;
-
-    // Send each chunk — use timestamp-unique cb names to avoid conflicts on repeat pushes
-    const pushId = Date.now();
-    for(let i = 0; i < total; i++){
-      const d = encodeURIComponent(chunks[i]);
-      const url = syncUrl + '?action=chunk&i='+i+'&total='+total+'&d='+d;
-      await jsonp(url, '_tt_chunk_'+pushId+'_'+i);
-    }
-
-    // Signal write complete
-    await jsonp(syncUrl + '?action=commit', '_tt_commit_'+pushId);
-    localStorage.setItem('tt_last_sync', Date.now().toString());
-    setSyncDot('ok'); toast('Synced to cloud ✓');
-  } catch(e){
-    setSyncDot('err');
-    const msg = e.message === 'timeout' ? 'Push timed out — redeploy Apps Script' :
-                e.message === 'script error' ? 'Push blocked — check Apps Script URL' :
-                'Push failed: ' + e.message;
-    toast(msg, true);
-    console.warn('Sync push error:', e.message);
-  }
-}
-
-async function syncPull(attempt){
-  attempt = attempt || 1;
-  if(!syncUrl) return;
-  if(attempt === 1) setSyncDot('busy');
-  function expand(t){
-    return {
-      id:t.id, no:t.no,
-      stages:         t.stages || [],
-      stageEnteredAt: t.sea || t.stageEnteredAt || {},
-      priority:       t.p   || t.priority || '',
-      isAF:           !!(t.af || t.isAF),
-      notes:          t.n   || t.notes    || '',
-      emd:            t.e   || t.emd      || '',
-      saleEnd:        t.s   || t.saleEnd  || '',
-      techBid:        t.tb  || t.techBid  || '',
-      priceBid:       t.pb  || t.priceBid || '',
-      ra:             t.ra  || '',
-      validity:       t.v   || t.validity || '',
-      tcq:            t.q   || t.tcq      || '',
-      stageAssigned:       t.sa  || t.stageAssigned || {},
-      stageAssignHistory:  t.sah || t.stageAssignHistory || {},
-    };
-  }
-  try{
-    const remote = await jsonp(syncUrl + '?action=read', '_tt_pull_'+Date.now(), 30000);
-    const arr = Array.isArray(remote) ? remote : null;
-    if(arr && arr.length > 0){
-      tenders = arr.map(expand);
-      save(); render();
-      localStorage.setItem('tt_last_sync', Date.now().toString());
-      setSyncDot('ok'); toast('Pulled from cloud ✓');
-    } else {
-      setSyncDot('ok');
-    }
-  } catch(e){
-    if(attempt < 3){
-      // Auto-retry — script may be cold starting
-      toast('Pull slow, retrying ('+attempt+'/3)…');
-      setTimeout(function(){ syncPull(attempt + 1); }, 5000);
+  // Wire old Google Sheets one-time migration
+  wire('sp-migrate', function(){
+    const urlEl = document.getElementById('sp-old-url');
+    const statusEl = document.getElementById('sp-migrate-status');
+    if(!urlEl || !statusEl) return;
+    const url = urlEl.value.trim();
+    if(!url || !url.includes('script.google.com')){
+      statusEl.style.color = 'var(--red)';
+      statusEl.textContent = 'Enter a valid Google Apps Script URL';
       return;
     }
-    setSyncDot('err');
-    const msg = e.message === 'timeout' ? 'Pull timed out after 3 tries. Try again in a moment.' :
-                e.message === 'script error' ? 'Pull failed — check Apps Script URL' :
-                'Pull failed: ' + e.message;
-    toast(msg, true);
-    console.warn('Sync pull error:', e.message);
-  }
-}
+    statusEl.style.color = 'var(--dim)';
+    statusEl.textContent = '⏳ Pulling from Google Sheets…';
+    migrateFromSheets(url, statusEl);
+  });
 
+  wire('sp-push',   function(){ closeM('modal-sync'); syncPush(); });
+  wire('sp-pull',   function(){ closeM('modal-sync'); syncPull(); });
+  wire('sp-export', exportData);
+  wire('sp-import', importData);
+
+  wire('sp-connect', function(){
+    const inp = document.getElementById('sp-token');
+    if(!inp) return;
+    const token = inp.value.trim();
+    if(!token){ toast('Enter your GitHub token', true); return; }
+    if(!token.startsWith('ghp_') && !token.startsWith('github_pat_')){
+      toast('Token should start with ghp_ or github_pat_', true); return;
+    }
+    const oldCfg = getSyncCfg();
+    const newCfg = { token: token, gistId: token === oldCfg.token ? (oldCfg.gistId||'') : '' };
+    saveSyncCfg(newCfg);
+    setSyncDot('ok');
+    closeM('modal-sync');
+    toast('Token saved ✓');
+    if(!newCfg.gistId) syncPush();
+    else syncPull();
+  });
+
+  wire('sp-disc', function(){
+    const btn = document.getElementById('sp-disc');
+    if(!btn) return;
+    if(btn.dataset.armed === '1'){
+      saveSyncCfg({});
+      localStorage.removeItem('tt_last_sync');
+      setSyncDot('idle');
+      closeM('modal-sync');
+      toast('Sync disconnected');
+    } else {
+      btn.dataset.armed = '1';
+      btn.textContent = 'Tap again to confirm';
+      setTimeout(function(){ if(btn) { btn.dataset.armed='0'; btn.textContent='Disconnect'; }}, 2500);
+    }
+  });
+
+  openM('modal-sync');
+}
 
 // ── DRAG AND DROP ─────────────────────────────────────
 (function(){
@@ -2684,8 +2797,9 @@ async function syncPull(attempt){
 load();
 buildSelects();
 render();
-setSyncDot('idle');
-if(syncUrl) syncPull();
+const _initCfg = getSyncCfg();
+setSyncDot(_initCfg.token ? 'ok' : 'idle');
+if(_initCfg.token && _initCfg.gistId) syncPull();
 </script>
 </body>
 </html>
