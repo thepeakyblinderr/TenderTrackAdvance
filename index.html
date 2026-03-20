@@ -697,7 +697,7 @@ if('serviceWorker' in navigator){
       </button>
       <button id="people-tab-workload" onclick="switchPeopleTab('workload')"
         style="flex:1;padding:8px;border-radius:9px;font-family:var(--mono);font-size:12px;font-weight:700;cursor:pointer;
-               background:var(--surface2,var(--card2));color:var(--dim);border:1px solid var(--border2);">
+               background:var(--card2);color:var(--dim);border:1px solid var(--border2);">
         Workload
       </button>
     </div>
@@ -741,10 +741,14 @@ if('serviceWorker' in navigator){
 <script>
 // ── THEME ─────────────────────────────────────────────
 (function(){
-  const saved = localStorage.getItem('tt_theme') || 'dark';
-  document.documentElement.setAttribute('data-theme', saved);
+  const saved = localStorage.getItem('tt_theme');
+  const sys = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  const theme = saved || sys;
+  document.documentElement.setAttribute('data-theme', theme);
   const btn = document.getElementById('btn-theme');
-  if(btn) btn.textContent = saved === 'dark' ? '🌙' : '☀️';
+  if(btn) btn.textContent = theme === 'dark' ? '☀️' : '🌙';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content = theme === 'dark' ? '#0f0f0e' : '#f5f5f3';
 })();
 function toggleTheme(){
   const cur = document.documentElement.getAttribute('data-theme');
@@ -752,7 +756,9 @@ function toggleTheme(){
   document.documentElement.setAttribute('data-theme', next);
   localStorage.setItem('tt_theme', next);
   const btn = document.getElementById('btn-theme');
-  if(btn) btn.textContent = next === 'dark' ? '🌙' : '☀️';
+  if(btn) btn.textContent = next === 'dark' ? '☀️' : '🌙';
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content = next === 'dark' ? '#0f0f0e' : '#f5f5f3';
 }
 
 // ── DATA ──────────────────────────────────────────────
