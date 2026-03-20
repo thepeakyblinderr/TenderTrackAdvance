@@ -420,10 +420,10 @@ async function syncPush(){
   }
 }
 
-async function syncPull(){
+async function syncPull(silent){
   const cfg = getSyncCfg();
   if(!cfg.token) return;
-  if(!cfg.gistId){ toast('Push first to create the Gist', true); return; }
+  if(!cfg.gistId){ if(!silent) toast('Push first to create the Gist', true); return; }
   setSyncDot('busy');
   try{
     const res  = await gistReq('GET', '/gists/' + cfg.gistId);
@@ -432,13 +432,22 @@ async function syncPull(){
     let raw = file.content;
     if(file.truncated){ const r = await fetch(file.raw_url); raw = await r.text(); }
     const arr = JSON.parse(raw);
-    if(Array.isArray(arr) && arr.length > 0){
-      tenders = arr; save(); render();
-      localStorage.setItem('emd_last_sync', Date.now().toString());
-      setSyncDot('ok'); toast('Pulled from Gist ✓');
-    } else { setSyncDot('ok'); toast('Nothing to pull'); }
+    if(Array.isArray(arr)){
+      if(arr.length > 0){
+        tenders = arr; save(); render();
+        localStorage.setItem('emd_last_sync', Date.now().toString());
+        setSyncDot('ok');
+        if(!silent) toast('Pulled ' + arr.length + ' entries \u2713');
+      } else {
+        setSyncDot('ok');
+        if(!silent) toast('Gist is empty \u2014 Push from your main device first');
+      }
+    } else {
+      throw new Error('Invalid data format in Gist');
+    }
   } catch(e){
-    setSyncDot('err'); toast('Pull failed: ' + e.message, true);
+    setSyncDot('err');
+    if(!silent) toast('Pull failed: ' + e.message, true);
   }
 }
 
@@ -849,7 +858,7 @@ function exportExcel(){
 load();
 const _emdCfg = getSyncCfg();
 setSyncDot(_emdCfg.token ? 'ok' : '');
-if(_emdCfg.token && _emdCfg.gistId) syncPull();
+if(_emdCfg.token && _emdCfg.gistId) syncPull(true);
 </script>
 </body>
 </html>
