@@ -2342,10 +2342,10 @@ async function syncPush(){
   }
 }
 
-async function syncPull(){
+async function syncPull(silent){
   const cfg = getSyncCfg();
   if(!cfg.token) return;
-  if(!cfg.gistId){ toast('Push first to create the Gist', true); return; }
+  if(!cfg.gistId){ if(!silent) toast('Push first to create the Gist', true); return; }
   setSyncDot('busy');
   try{
     const res  = await gistReq('GET', '/gists/' + cfg.gistId);
@@ -2357,16 +2357,23 @@ async function syncPull(){
       raw = await r.text();
     }
     const arr = JSON.parse(raw);
-    if(Array.isArray(arr) && arr.length > 0){
-      tenders = arr.map(expandSlim);
-      save(); render();
-      localStorage.setItem('tt_last_sync', Date.now().toString());
-      setSyncDot('ok'); toast('Pulled from Gist ✓');
+    if(Array.isArray(arr)){
+      if(arr.length > 0){
+        tenders = arr.map(expandSlim);
+        save(); render();
+        localStorage.setItem('tt_last_sync', Date.now().toString());
+        setSyncDot('ok');
+        if(!silent) toast('Pulled ' + arr.length + ' tenders ✓');
+      } else {
+        setSyncDot('ok');
+        if(!silent) toast('Gist is empty — Push from your main device first');
+      }
     } else {
-      setSyncDot('ok'); toast('Nothing to pull');
+      throw new Error('Invalid data format in Gist');
     }
   } catch(e){
-    setSyncDot('err'); toast('Pull failed: ' + e.message, true);
+    setSyncDot('err');
+    if(!silent) toast('Pull failed: ' + e.message, true);
     console.warn('syncPull:', e);
   }
 }
@@ -2711,7 +2718,7 @@ buildSelects();
 render();
 const _initCfg = getSyncCfg();
 setSyncDot(_initCfg.token ? 'ok' : 'idle');
-if(_initCfg.token && _initCfg.gistId) syncPull();
+if(_initCfg.token && _initCfg.gistId) syncPull(true);
 </script>
 </body>
 </html>
