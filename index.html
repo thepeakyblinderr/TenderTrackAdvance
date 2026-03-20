@@ -131,6 +131,15 @@ header .page-wrap{display:flex;flex-direction:column;}
 .stage-assign-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#fff;flex-shrink:0;}
 .stage-assign-name{font-size:12px;font-weight:600;color:var(--text);}
 
+/* Assignment history */
+.assign-history{border-top:1px solid var(--border);padding-top:8px;margin-top:2px;}
+.assign-history-label{font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);font-family:var(--mono);margin-bottom:6px;}
+.assign-history-row{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid var(--border);}
+.assign-history-row:last-child{border-bottom:none;}
+.assign-history-avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:#fff;flex-shrink:0;}
+.assign-history-name{font-size:12px;color:var(--dim);flex:1;}
+.assign-history-when{font-size:10px;color:var(--dim);font-family:var(--mono);flex-shrink:0;}
+
 /* HEADER */
 header{position:sticky;top:0;z-index:50;
   backdrop-filter:blur(28px);-webkit-backdrop-filter:blur(28px);
@@ -1043,7 +1052,8 @@ function personColor(pid){
   return ASSIGN_COLORS[idx % ASSIGN_COLORS.length] || '#7B2FBE';
 }
 function personById(pid){
-  return getPeople().find(function(x){ return x.id===pid; }) || null;
+  if(!pid) return null;
+  return getPeople().find(function(x){ return x.id===pid; }) || {id:pid, name:'(removed)'};
 }
 function initials(name){
   return name.trim().split(/\s+/).map(function(w){ return w[0]; }).join('').toUpperCase().slice(0,2);
@@ -1095,13 +1105,14 @@ function deletePerson(pid){
   let people = getPeople();
   people = people.filter(function(p){ return p.id!==pid; });
   savePeople(people);
-  // Remove assignments from all tenders
+  // Remove assignments and history entries referencing this person
   tenders.forEach(function(t){
     if(t.stageAssigned){
       Object.keys(t.stageAssigned).forEach(function(k){
         if(t.stageAssigned[k]===pid) delete t.stageAssigned[k];
       });
     }
+    // Keep history entries but we leave them as-is (person name shown as "Removed user")
   });
   save(); renderPeopleList(); render();
   toast('Removed');
@@ -1161,15 +1172,35 @@ function openAssign(tid, sid){
 function assignPerson(pid){
   const t = tenders.find(function(x){ return x.id===_assignTid; });
   if(!t) return;
+
+  // Keep old flat map for chip display (current assignee per stage)
   if(!t.stageAssigned) t.stageAssigned = {};
+
+  // New: full history log per stage
+  if(!t.stageAssignHistory) t.stageAssignHistory = {};
+  if(!t.stageAssignHistory[_assignSid]) t.stageAssignHistory[_assignSid] = [];
+
   if(pid === null){
+    // Unassign: log an unassign event and clear current
     delete t.stageAssigned[_assignSid];
+    t.stageAssignHistory[_assignSid].push({
+      pid: null,
+      assignedAt: Date.now()
+    });
   } else {
+    // Assign: only log if it's a different person than current
+    const prev = t.stageAssigned[_assignSid] || null;
     t.stageAssigned[_assignSid] = pid;
+    if(pid !== prev){
+      t.stageAssignHistory[_assignSid].push({
+        pid: pid,
+        assignedAt: Date.now()
+      });
+    }
   }
+
   save(); render();
   closeM('modal-assign');
-  // Refresh detail if open
   const det = document.getElementById('modal-detail');
   if(det && det.classList.contains('open')){ openDetail(_assignTid); }
   const pName = pid ? (personById(pid)||{name:'?'}).name : 'Unassigned';
@@ -1681,54 +1712,141 @@ function openDetail(id){
           '</span>';
       }).join('')+
     '</div>'+
-    buildAssignSection(t)+
     actHtml+
+    buildAssignSection(t)+
     datesHtml+
     (t.emd?'<div class="detail-sec">EMD</div><div style="font-family:var(--mono);font-size:15px;font-weight:700;color:var(--accent);padding:4px 0">₹'+Math.round(Number(t.emd)).toLocaleString('en-IN')+'</div>':'')+
     (t.notes?'<div class="detail-sec">Notes</div><div class="detail-notes">'+esc(t.notes)+'</div>':'');
 
   openM('modal-detail');
   wireAssignButtons();
+  wirePastStagesToggle(t.id);
 }
 
 
 // ── ASSIGNMENT SECTION in detail ─────────────────────────────────────────────
 function buildAssignSection(t){
-  const people = getPeople();
   const assigned = t.stageAssigned || {};
+  const history  = t.stageAssignHistory || {};
+
+  // Active stages + any past stages that have history but are no longer active
+  const activeSids = t.stages || [];
+  const pastSids = Object.keys(history)
+    .map(Number)
+    .filter(function(sid){ return !activeSids.includes(sid) && history[sid] && history[sid].length > 0; });
+
+  if(activeSids.length === 0 && pastSids.length === 0) return '';
 
   let html = '<div class="detail-sec">Assigned To</div>';
 
-  html += t.stages.map(function(sid){
-    const s = sg(sid);
+  function renderStageBlock(sid, isActive){
+    const s   = sg(sid);
     const pid = assigned[sid] || null;
-    const p = pid ? personById(pid) : null;
+    const p   = pid ? personById(pid) : null;
     const col = pid ? personColor(pid) : null;
-    const age = stageAge(t, sid);
-    const ageStr = age !== null ? (age === 0 ? 'today' : age + 'd ago') : '';
+    const age = isActive ? stageAge(t, sid) : null;
+    const ageStr = age !== null ? (age === 0 ? 'added today' : age + 'd ago') : '';
+    const log = (history[sid] || []).slice().reverse();
 
-    return '<div class="stage-assign-row" data-tid="'+t.id+'" data-sid="'+sid+'">'+
-      '<div class="stage-assign-info">'+
-        '<div class="stage-assign-label" style="color:'+s.color+'">'+s.label+'</div>'+
-        (ageStr ? '<div class="stage-assign-meta">Added '+ageStr+'</div>' : '')+
+    const historyHtml = log.length > 1
+      ? '<div class="assign-history">'+
+          '<div class="assign-history-label">History</div>'+
+          log.slice(1).map(function(entry){
+            const ep = entry.pid ? personById(entry.pid) : null;
+            const ec = entry.pid ? personColor(entry.pid) : null;
+            const when = entry.assignedAt ? fmtRelTime(entry.assignedAt) : '';
+            const carried = entry.carriedFrom ? ' <span style="font-size:9px;color:var(--dim)">(carried over)</span>' : '';
+            return '<div class="assign-history-row">'+
+              (ep
+                ? '<span class="assign-history-avatar" style="background:'+ec+'">'+esc(initials(ep.name))+'</span>'+
+                  '<span class="assign-history-name">'+esc(ep.name)+carried+'</span>'
+                : '<span class="assign-history-name" style="color:var(--dim)">Unassigned</span>'
+              )+
+              (when ? '<span class="assign-history-when">'+when+'</span>' : '')+
+            '</div>';
+          }).join('')+
+        '</div>'
+      : '';
+
+    const pastBadge = !isActive
+      ? '<span style="font-size:9px;font-family:var(--mono);font-weight:700;color:var(--dim);'+
+          'background:var(--muted);border-radius:4px;padding:1px 5px;margin-left:5px;">past</span>'
+      : '';
+
+    return '<div class="stage-assign-row" style="flex-direction:column;align-items:stretch;">'+
+      '<div style="display:flex;align-items:center;margin-bottom:6px;">'+
+        '<div class="stage-assign-info" style="flex:1">'+
+          '<div class="stage-assign-label" style="color:'+s.color+'">'+s.label+pastBadge+'</div>'+
+          (ageStr ? '<div class="stage-assign-meta">'+ageStr+'</div>' : '')+
+        '</div>'+
+        (isActive
+          ? '<button class="stage-assign-btn" data-tid="'+t.id+'" data-sid="'+sid+'" '+
+              'style="background:none;border:1px solid var(--border2);border-radius:7px;'+
+              'padding:4px 10px;font-size:11px;font-family:var(--sans);font-weight:600;'+
+              'color:var(--dim);cursor:pointer;flex-shrink:0;">'+(p ? 'Change' : 'Assign')+'</button>'
+          : '')+
       '</div>'+
-      '<div class="stage-assign-person">'+
+      '<div class="stage-assign-person" style="margin-bottom:'+(historyHtml?'8px':'0')+'">'+
         (p
           ? '<div class="stage-assign-avatar" style="background:'+col+'">'+esc(initials(p.name))+'</div>'+
-            '<div class="stage-assign-name">'+esc(p.name)+'</div>'
-          : '<div style="font-size:12px;color:var(--dim);">Unassigned</div>'
+            '<div style="flex:1">'+
+              '<div class="stage-assign-name">'+esc(p.name)+'</div>'+
+              (log[0] && log[0].assignedAt ? '<div class="stage-assign-meta">Assigned '+fmtRelTime(log[0].assignedAt)+'</div>' : '')+
+            '</div>'
+          : '<div style="font-size:12px;color:var(--dim);font-style:italic">Not assigned</div>'
         )+
-        '<button class="stage-assign-btn" data-tid="'+t.id+'" data-sid="'+sid+'" '+
-          'style="background:none;border:1px solid var(--border2);border-radius:7px;'+
-          'padding:4px 10px;font-size:11px;font-family:var(--sans);font-weight:600;'+
-          'color:var(--dim);cursor:pointer;margin-left:8px;">'+
-          (p ? 'Change' : 'Assign')+
-        '</button>'+
       '</div>'+
+      historyHtml+
     '</div>';
-  }).join('');
+  }
+
+  // Active stages first
+  activeSids.forEach(function(sid){ html += renderStageBlock(sid, true); });
+
+  // Past stages (removed but have history) — collapsible
+  if(pastSids.length > 0){
+    const pastId = 'past-stages-'+t.id;
+    html +=
+      '<div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;">'+
+        '<button id="btn-'+pastId+'" style="display:flex;align-items:center;gap:6px;width:100%;'+
+          'background:none;border:none;cursor:pointer;padding:8px 0;'+
+          'font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;'+
+          'color:var(--dim);font-family:var(--mono);">'+
+          '<span id="chev-'+pastId+'">▸</span> Past Stages ('+pastSids.length+')'+
+        '</button>'+
+        '<div id="'+pastId+'" style="display:none;">'+
+          pastSids.map(function(sid){ return renderStageBlock(sid, false); }).join('')+
+        '</div>'+
+      '</div>';
+  }
 
   return html;
+}
+
+// Wire past-stages toggle — called after detail innerHTML is set
+function wirePastStagesToggle(tid){
+  const pastId = 'past-stages-'+tid;
+  const btn = document.getElementById('btn-'+pastId);
+  const panel = document.getElementById(pastId);
+  const chev = document.getElementById('chev-'+pastId);
+  if(!btn || !panel) return;
+  btn.addEventListener('click', function(){
+    const open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    chev.textContent = open ? '▸' : '▾';
+  });
+}
+
+function fmtRelTime(ts){
+  const diff = Date.now() - ts;
+  const mins = Math.floor(diff/60000);
+  const hrs  = Math.floor(diff/3600000);
+  const days = Math.floor(diff/86400000);
+  if(mins < 2)  return 'just now';
+  if(mins < 60) return mins+'m ago';
+  if(hrs  < 24) return hrs+'h ago';
+  if(days < 30) return days+'d ago';
+  return new Date(ts).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'2-digit'});
 }
 
 function wireAssignButtons(){
@@ -1807,6 +1925,8 @@ function removeStage(id, sid){
   if(!t) return;
   t.stages = t.stages.filter(function(s){ return s!==sid; });
   if(t.stageEnteredAt) delete t.stageEnteredAt[sid];
+  // NOTE: deliberately preserve stageAssigned[sid] and stageAssignHistory[sid]
+  // so assignment history survives stage removal
   save(); render(); buildChips(t); toast('Stage removed');
   syncPush();
 }
@@ -1817,6 +1937,7 @@ function removeStageDetail(id, sid){
   if(t.stages.length <= 1){ toast('Cannot remove last stage', true); return; }
   t.stages = t.stages.filter(function(s){ return s!==sid; });
   if(t.stageEnteredAt) delete t.stageEnteredAt[sid];
+  // Preserve stageAssigned[sid] and stageAssignHistory[sid] intentionally
   save(); render();
   // Refresh just the stages section inside the open detail modal
   const container = document.getElementById('detail-stages-'+id);
@@ -2122,6 +2243,7 @@ async function syncPush(){
       if(t.validity) o.v  = t.validity;
       if(t.tcq)      o.q  = t.tcq;
       if(t.stageAssigned && Object.keys(t.stageAssigned).length) o.sa = t.stageAssigned;
+      if(t.stageAssignHistory && Object.keys(t.stageAssignHistory).length) o.sah = t.stageAssignHistory;
       return o;
     });
 
@@ -2177,7 +2299,8 @@ async function syncPull(attempt){
       ra:             t.ra  || '',
       validity:       t.v   || t.validity || '',
       tcq:            t.q   || t.tcq      || '',
-      stageAssigned:  t.sa  || t.stageAssigned || {},
+      stageAssigned:       t.sa  || t.stageAssigned || {},
+      stageAssignHistory:  t.sah || t.stageAssignHistory || {},
     };
   }
   try{
@@ -2300,11 +2423,21 @@ async function syncPull(attempt){
     // Remove from old stage, add to new stage
     t.stages = t.stages.filter(function(s){ return s !== fromSid; });
     if(!t.stages.includes(toSid)) t.stages.push(toSid);
-    // Update stageEnteredAt
+    // Update stageEnteredAt — preserve history for fromSid intentionally
     if(!t.stageEnteredAt) t.stageEnteredAt = {};
+    delete t.stageEnteredAt[fromSid]; // clear entered-at for old stage only
     if(!t.stageEnteredAt[toSid]){
       var midnight = new Date(); midnight.setHours(0,0,0,0);
       t.stageEnteredAt[toSid] = midnight.getTime();
+    }
+    // Carry over current assignee from old stage to new stage if new stage is unassigned
+    if(!t.stageAssigned) t.stageAssigned = {};
+    if(!t.stageAssignHistory) t.stageAssignHistory = {};
+    var prevPid = t.stageAssigned[fromSid] || null;
+    if(prevPid && !t.stageAssigned[toSid]){
+      t.stageAssigned[toSid] = prevPid;
+      if(!t.stageAssignHistory[toSid]) t.stageAssignHistory[toSid] = [];
+      t.stageAssignHistory[toSid].push({ pid: prevPid, assignedAt: Date.now(), carriedFrom: fromSid });
     }
     save(); render();
     var toStage = STAGES.find(function(s){ return s.id === toSid; });
