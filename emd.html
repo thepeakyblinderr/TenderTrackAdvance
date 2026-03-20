@@ -395,43 +395,14 @@ function toggleTheme(){
 
 // ── CONSTANTS ──────────────────────────────────────────
 const KEY      = 'emd_v1';
-const SYNC_KEY = 'emd_sync_url';
+const SYNC_KEY = 'emd_sync_cfg';
 
 // ── STATE ──────────────────────────────────────────────
-// Data structure:
 // tenders = [{id, no, entries:[{id, amount, vendor, date, status, notes}]}]
 let tenders = [];
-let syncUrl = localStorage.getItem(SYNC_KEY) || '';
-
-const APPS_SCRIPT = `function doGet(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sh = ss.getSheetByName('EMDData');
-  if(!sh) sh = ss.insertSheet('EMDData');
-  var cb = e.parameter.cb || 'callback';
-  var action = e.parameter.action || 'read';
-  if(action === 'chunk') {
-    var i = parseInt(e.parameter.i || '0');
-    sh.getRange(2+i, 2).setValue(e.parameter.d || '');
-    sh.getRange(1, 2).setValue(e.parameter.total || '1');
-    return ContentService.createTextOutput(cb+'({"ok":true})')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-  if(action === 'commit') {
-    var total = parseInt(sh.getRange(1,2).getValue() || '1');
-    var parts = [];
-    for(var i=0; i<total; i++) parts.push(sh.getRange(2+i,2).getValue()||'');
-    sh.getRange(1,1).setValue(parts.join(''));
-    sh.getRange(1,2,total+1,1).clearContent();
-    return ContentService.createTextOutput(cb+'({"ok":true})')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
-  }
-  var data = sh.getRange(1,1).getValue() || '[]';
-  return ContentService.createTextOutput(cb+'('+data+')')
-    .setMimeType(ContentService.MimeType.JAVASCRIPT);
-}`;
 let activeFilter = 'all';
-let editingTenderId = null;   // for tender modal
-let editingEntryTenderId = null; // for entry modal
+let editingTenderId = null;
+let editingEntryTenderId = null;
 let editingEntryId = null;
 let selectedStatus = 'submitted';
 let expandedCards = new Set();
@@ -506,12 +477,7 @@ function render(){
   // Stats
   let totalActive = 0, pendingCount = 0, submittedCount = 0, refundedCount = 0;
   tenders.forEach(t => {
-    // Sum only the latest entry per vendor (not all entries)
-    const vendorMap = {};
-    (t.entries||[]).forEach(e => { if(e.vendor) vendorMap[e.vendor] = e; });
-    Object.values(vendorMap).forEach(e => {
-      if(e.status !== 'refunded') totalActive += (parseFloat(e.amount)||0);
-    });
+    totalActive += activeAmount(t);
     if(t.entries) t.entries.forEach(e => {
       if(e.status==='refund-pending') pendingCount++;
       if(e.status==='submitted') submittedCount++;
@@ -534,36 +500,14 @@ function render(){
     const expanded = expandedCards.has(t.id);
     const entriesFiltered = activeFilter === 'all' ? (t.entries||[]) : (t.entries||[]).filter(e=>e.status===activeFilter);
 
-    // Build per-vendor summary: each unique vendor on its own line with their latest amount + status
-    const vendorMap = {};
-    (t.entries||[]).forEach(e => {
-      if(!e.vendor) return;
-      // Keep the last entry per vendor (most recent)
-      vendorMap[e.vendor] = e;
-    });
-    const vendorRows = Object.values(vendorMap);
-
-    // Amount to show in header = latest entry's amount (not a sum)
-    const headerAmount = le ? le.amount : null;
-    const statusToShow = le ? le.status : null;
-
-    // Build stacked vendor lines HTML
-    const vendorHtml = vendorRows.length
-      ? vendorRows.map(e =>
-          `<div class="emd-vendor-row">` +
-            `<span class="emd-vendor-name">${esc(e.vendor)}</span>` +
-            `<span class="emd-vendor-amt">${fmtAmount(e.amount)}</span>` +
-            `<span class="emd-status ${e.status}" style="font-size:9px;padding:2px 7px;">${statusLabel(e.status)}</span>` +
-          `</div>`
-        ).join('')
-      : `<div class="emd-vendor" style="color:var(--dim);font-style:italic">No entries yet</div>`;
-
     return `<div class="emd-card${expanded?' expanded':''}" id="card-${t.id}">
       <div class="emd-card-header" onclick="toggleCard('${t.id}')">
         <div style="flex:1;min-width:0;">
           <div class="emd-no">${esc(t.no)}</div>
-          ${vendorHtml}
+          ${le ? `<div class="emd-vendor">${esc(le.vendor||'—')}</div>` : '<div class="emd-vendor" style="color:var(--dim);font-style:italic">No entries yet</div>'}
         </div>
+        ${le ? `<div class="emd-amount">${fmtAmount(activeAmount(t))}</div>` : ''}
+        ${le ? `<div class="emd-status ${le.status}">${statusLabel(le.status)}</div>` : ''}
         <div class="emd-chevron">▾</div>
       </div>
       ${expanded ? `
@@ -729,40 +673,97 @@ let _tt; function toast(msg, err){
   clearTimeout(_tt); _tt = setTimeout(()=>el.className='toast',2800);
 }
 
-// ── SYNC ──────────────────────────────────────────────
+// ── SYNC — GitHub Gist ────────────────────────────────
+const EMD_SYNC_FILE = 'emdtrack-data.json';
+
+function getSyncCfg(){
+  try{ return JSON.parse(localStorage.getItem(SYNC_KEY)||'{}'); }catch(e){ return {}; }
+}
+function saveSyncCfg(cfg){ localStorage.setItem(SYNC_KEY, JSON.stringify(cfg)); }
+
 function setSyncDot(state){
   const dot = document.getElementById('sync-dot');
-  const btn = document.getElementById('btn-sync');
+  const btn  = document.getElementById('btn-sync');
+  if(!dot||!btn) return;
   dot.className = 'sync-dot' + (state?' '+state:'');
-  btn.className = 'btn-sync' + (syncUrl&&state==='ok'?' ok':'');
+  const cfg = getSyncCfg();
+  btn.className = 'btn-sync' + (cfg.token&&state==='ok'?' ok':'');
 }
-function openSync(){
-  const body = document.getElementById('sync-body');
-  const configured = !!syncUrl;
-  const script = APPS_SCRIPT;
-  body.innerHTML = `
-    ${configured
-      ? `<div class="sync-url-box" onclick="copyUrl()" title="Tap to copy">${syncUrl}</div>
-         <button class="btn-push" onclick="syncPush()">⬆ Push to Cloud</button>
-         <button class="btn-pull" onclick="syncPull()">⬇ Pull from Cloud</button>
-         <div style="text-align:center;margin-bottom:14px;">
-           <span style="font-size:11px;color:var(--dim);font-family:var(--mono)">Last sync: ${lastSyncText()}</span>
-         </div>
-         <button class="btn-c" onclick="changeSyncUrl()" style="width:100%;text-align:center">Change URL</button>`
-      : `<p style="font-size:13px;color:var(--dim);margin-bottom:16px;line-height:1.6;">
-           Set up a separate Google Sheet for EMD data with its own Apps Script.
-         </p>
-         <div class="sync-step"><div class="sync-step-num">1</div><div class="sync-step-body">Create a new Google Sheet → Extensions → Apps Script → delete existing code</div></div>
-         <div class="sync-step"><div class="sync-step-num">2</div><div class="sync-step-body">Copy the script below and paste it in Apps Script</div></div>
-         <div class="sync-url-box" id="script-box" style="font-size:10px;max-height:120px;overflow-y:auto;margin-bottom:6px;">${script.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
-         <button onclick="copyScript()" style="width:100%;background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:9px;color:var(--dim);font-family:var(--sans);font-size:13px;font-weight:500;cursor:pointer;margin-bottom:14px;">📋 Copy Script</button>
-         <div class="sync-step"><div class="sync-step-num">3</div><div class="sync-step-body">Click Deploy → New deployment → Web app → Execute as: Me → Access: Anyone → Deploy → Authorize</div></div>
-         <div class="sync-step"><div class="sync-step-num">4</div><div class="sync-step-body">Copy the Web App URL and paste below</div></div>
-         <input class="fi" id="sync-url-input" placeholder="https://script.google.com/macros/s/…/exec" style="margin-bottom:12px;">
-         <button class="btn-s" onclick="saveSyncUrl()" style="width:100%">Save URL</button>`
-    }`;
-  openM('modal-sync');
+
+async function gistReq(method, path, body){
+  const cfg = getSyncCfg();
+  if(!cfg.token) throw new Error('No token');
+  const opts = {
+    method: method,
+    headers: {
+      'Authorization': 'Bearer ' + cfg.token,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      'X-GitHub-Api-Version': '2022-11-28'
+    }
+  };
+  if(body) opts.body = JSON.stringify(body);
+  const res = await fetch('https://api.github.com' + path, opts);
+  if(!res.ok){
+    const err = await res.json().catch(function(){ return {}; });
+    throw new Error((err.message || res.statusText) + ' (' + res.status + ')');
+  }
+  return res.status === 204 ? {} : res.json();
 }
+
+async function syncPush(){
+  const cfg = getSyncCfg();
+  if(!cfg.token){ toast('Set up sync first', true); return; }
+  setSyncDot('busy');
+  try{
+    const files = {};
+    files[EMD_SYNC_FILE] = { content: JSON.stringify(tenders) };
+    let gistId = cfg.gistId;
+    if(!gistId){
+      const res = await gistReq('POST', '/gists', {
+        description: 'EMDTrack data — do not edit manually',
+        public: false, files: files
+      });
+      gistId = res.id;
+      cfg.gistId = gistId;
+      saveSyncCfg(cfg);
+    } else {
+      await gistReq('PATCH', '/gists/' + gistId, { files: files });
+    }
+    localStorage.setItem('emd_last_sync', Date.now().toString());
+    setSyncDot('ok'); toast('Pushed to Gist ✓');
+  } catch(e){
+    setSyncDot('err'); toast('Push failed: ' + e.message, true);
+    console.warn('EMD syncPush:', e);
+  }
+}
+
+async function syncPull(){
+  const cfg = getSyncCfg();
+  if(!cfg.token) return;
+  if(!cfg.gistId){ toast('Push first to create the Gist', true); return; }
+  setSyncDot('busy');
+  try{
+    const res  = await gistReq('GET', '/gists/' + cfg.gistId);
+    const file = res.files && res.files[EMD_SYNC_FILE];
+    if(!file) throw new Error('Data file not found in Gist');
+    let raw = file.content;
+    if(file.truncated){ const r = await fetch(file.raw_url); raw = await r.text(); }
+    const arr = JSON.parse(raw);
+    if(Array.isArray(arr) && arr.length > 0){
+      tenders = arr;
+      save(); render();
+      localStorage.setItem('emd_last_sync', Date.now().toString());
+      setSyncDot('ok'); toast('Pulled from Gist ✓');
+    } else {
+      setSyncDot('ok'); toast('Nothing to pull');
+    }
+  } catch(e){
+    setSyncDot('err'); toast('Pull failed: ' + e.message, true);
+    console.warn('EMD syncPull:', e);
+  }
+}
+
 function lastSyncText(){
   const ts = localStorage.getItem('emd_last_sync');
   if(!ts) return 'never';
@@ -771,112 +772,129 @@ function lastSyncText(){
   if(diff < 60) return diff+'m ago';
   return Math.round(diff/60)+'h ago';
 }
-function copyScript(){
-  navigator.clipboard.writeText(APPS_SCRIPT).then(()=>toast('Script copied ✓')).catch(()=>{
-    const box = document.getElementById('script-box');
-    if(box){ const r=document.createRange(); r.selectNode(box); window.getSelection().removeAllRanges(); window.getSelection().addRange(r); }
-    toast('Select all and copy manually');
-  });
-}
-function copyUrl(){
-  navigator.clipboard.writeText(syncUrl).then(()=>toast('URL copied ✓')).catch(()=>{});
-}
-function changeSyncUrl(){
-  closeM('modal-sync');
-  syncUrl = '';
-  localStorage.removeItem(SYNC_KEY);
-  setSyncDot('');
-  setTimeout(openSync, 300);
-}
-function saveSyncUrl(){
-  const val = (document.getElementById('sync-url-input').value||'').trim();
-  if(!val || !val.startsWith('http')){ toast('Enter a valid URL', true); return; }
-  syncUrl = val;
-  localStorage.setItem(SYNC_KEY, syncUrl);
-  setSyncDot('ok');
-  closeM('modal-sync');
-  toast('Sync URL saved ✓');
+
+// ── One-time migration from old Google Sheets ─────────
+function migrateEMDFromSheets(url, statusEl){
+  const cbName = '_emd_migrate_' + Date.now();
+  let done = false;
+  const timer = setTimeout(function(){
+    if(done) return; done = true; cleanup();
+    statusEl.style.color='var(--red)'; statusEl.textContent='Timed out — check URL';
+  }, 20000);
+  function cleanup(){ clearTimeout(timer); delete window[cbName]; const s=document.getElementById('_emd_mig'); if(s&&s.parentNode) s.parentNode.removeChild(s); }
+  window[cbName] = function(data){
+    if(done) return; done = true; cleanup();
+    const arr = Array.isArray(data) ? data : null;
+    if(!arr||!arr.length){ statusEl.style.color='var(--yellow)'; statusEl.textContent='Sheet empty or no data'; return; }
+    let added=0;
+    arr.forEach(function(t){
+      if(!tenders.find(function(x){ return x.id===t.id||x.no.toLowerCase()===t.no.toLowerCase(); })){
+        tenders.unshift(t); added++;
+      }
+    });
+    save(); render();
+    statusEl.style.color='var(--green)'; statusEl.textContent='✓ Added '+added+' records. Connect & Push to Gist.';
+  };
+  const script = document.createElement('script');
+  script.id='_emd_mig';
+  script.onerror=function(){ if(done)return; done=true; cleanup(); statusEl.style.color='var(--red)'; statusEl.textContent='Could not reach URL'; };
+  script.src=url+(url.includes('?')?'&':'?')+'cb='+cbName;
+  document.head.appendChild(script);
 }
 
-// ── JSONP ─────────────────────────────────────────────
-function jsonp(url, cbName, timeout){
-  return new Promise(function(resolve, reject){
-    const id = cbName || ('_emd_cb_' + Date.now());
-    let done = false;
-    const timer = setTimeout(function(){
-      if(done) return; done = true;
-      delete window[id];
-      const s = document.getElementById('_jsonp_'+id);
-      if(s && s.parentNode) s.parentNode.removeChild(s);
-      reject(new Error('timeout'));
-    }, timeout || 15000);
-    window[id] = function(data){
-      if(done) return; done = true;
-      clearTimeout(timer);
-      delete window[id];
-      const s = document.getElementById('_jsonp_'+id);
-      if(s && s.parentNode) s.parentNode.removeChild(s);
-      resolve(data);
-    };
-    const old = document.getElementById('_jsonp_'+id);
-    if(old && old.parentNode) old.parentNode.removeChild(old);
-    const script = document.createElement('script');
-    script.id = '_jsonp_' + id;
-    script.onerror = function(){
-      if(done) return; done = true;
-      clearTimeout(timer); delete window[id];
-      const s = document.getElementById('_jsonp_'+id);
-      if(s && s.parentNode) s.parentNode.removeChild(s);
-      reject(new Error('script error'));
-    };
-    script.src = url + (url.includes('?') ? '&' : '?') + 'cb=' + id;
-    document.body.appendChild(script);
-  });
-}
-
-// ── SYNC PUSH (chunked) ───────────────────────────────
-async function syncPush(){
-  if(!syncUrl) return;
-  setSyncDot('busy');
-  try{
-    const full = JSON.stringify(tenders);
-    const CHUNK = 1500; // keep small so encodeURIComponent stays under Apps Script URL limit
-    const chunks = [];
-    for(let i = 0; i < full.length; i += CHUNK) chunks.push(full.slice(i, i+CHUNK));
-    const total = chunks.length;
-    const pushId = Date.now();
-    for(let i = 0; i < total; i++){
-      const d = encodeURIComponent(chunks[i]);
-      await jsonp(syncUrl+'?action=chunk&i='+i+'&total='+total+'&d='+d, '_emd_chunk_'+pushId+'_'+i);
-    }
-    await jsonp(syncUrl+'?action=commit', '_emd_commit_'+pushId);
-    localStorage.setItem('emd_last_sync', Date.now().toString());
-    setSyncDot('ok'); toast('Synced to cloud ✓');
-  } catch(e){
-    setSyncDot('err'); toast('Push failed — check URL', true);
-    console.warn('EMD sync push error:', e.message);
+function openSync(){
+  const cfg = getSyncCfg();
+  const connected = !!(cfg.token);
+  const body = document.getElementById('sync-body');
+  let html = '';
+  if(connected){
+    html =
+      '<div class="sync-url-box">✓ Connected · Last sync: '+lastSyncText()+'</div>'+
+      (cfg.gistId ? '<div style="font-size:11px;color:var(--dim);font-family:var(--mono);margin-bottom:12px;word-break:break-all">Gist: <a href="https://gist.github.com/'+cfg.gistId+'" target="_blank" style="color:var(--accent)">'+cfg.gistId.slice(0,20)+'…</a></div>' : '<p style="font-size:12px;color:var(--yellow);margin-bottom:14px;">⚠ No Gist yet — Push to create one.</p>')+
+      '<button class="btn-push" id="es-push">⬆ Push to Gist</button>'+
+      '<button class="btn-pull" id="es-pull">⬇ Pull from Gist</button>'+
+      '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--green);font-family:var(--mono);padding:14px 0 8px;border-top:1px solid var(--border);margin-top:6px;">GitHub Token</div>'+
+      '<input class="fi" id="es-token" type="password" value="'+cfg.token+'" placeholder="ghp_…" style="font-size:13px;font-family:var(--mono);margin-bottom:12px;">';
+  } else {
+    html =
+      '<a href="https://github.com/settings/tokens/new?scopes=gist&description=EMDTrack" target="_blank" '+
+        'style="display:flex;align-items:center;justify-content:center;gap:8px;'+
+        'background:var(--green);color:#fff;border:none;border-radius:10px;'+
+        'padding:12px 16px;font-family:var(--sans);font-size:14px;font-weight:700;'+
+        'text-decoration:none;margin-bottom:16px;cursor:pointer;">'+
+        '🔗 Open GitHub Token Page →'+
+      '</a>'+
+      '<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;">'+
+        '<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">Follow these steps on that page:</div>'+
+        '<div style="font-size:12px;color:var(--dim);line-height:1.9;">'+
+          '<b style="color:var(--text)">1.</b> Token name is already filled as "EMDTrack"<br>'+
+          '<b style="color:var(--text)">2.</b> Set Expiration → <b style="color:var(--text)">No expiration</b><br>'+
+          '<b style="color:var(--text)">3.</b> Under Select scopes → tick only <b style="color:var(--text)">gist</b> ✓<br>'+
+          '<b style="color:var(--text)">4.</b> Click <b style="color:var(--text)">Generate token</b><br>'+
+          '<b style="color:var(--text)">5.</b> Copy the token (starts with <code style="font-family:var(--mono);background:var(--muted);padding:1px 5px;border-radius:4px;">ghp_</code>)'+
+        '</div>'+
+      '</div>'+
+      '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--dim);font-family:var(--mono);margin-bottom:6px;">Paste token here</div>'+
+      '<input class="fi" id="es-token" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" '+
+        'style="font-size:13px;font-family:var(--mono);margin-bottom:12px;" autocomplete="off" spellcheck="false">'+
+      '<div style="font-size:11px;color:var(--dim);line-height:1.6;margin-bottom:14px;">'+
+        'After connecting tap <b style="color:var(--text)">Push</b> — a private Gist is created automatically.<br>'+
+        'On other devices: same token → Pull.'+
+      '</div>'+
+      '<div style="font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--green);font-family:var(--mono);padding:10px 0 6px;border-top:1px solid var(--border);">Had Google Sheets sync before?</div>'+
+      '<div style="font-size:12px;color:var(--dim);margin-bottom:8px;line-height:1.6">Your local data is safe. Paste old Apps Script URL to pull once.</div>'+
+      '<div style="display:flex;gap:8px;margin-bottom:4px;"><input class="fi" id="es-old-url" placeholder="https://script.google.com/…" style="font-size:12px;flex:1;"><button class="btn-pull" id="es-migrate" style="white-space:nowrap;flex-shrink:0;">Pull once</button></div>'+
+      '<div id="es-mig-status" style="font-size:11px;color:var(--dim);font-family:var(--mono);min-height:16px;margin-bottom:10px;"></div>';
   }
-}
 
-// ── SYNC PULL ─────────────────────────────────────────
-async function syncPull(){
-  if(!syncUrl) return;
-  setSyncDot('busy');
-  try{
-    const remote = await jsonp(syncUrl+'?action=read', '_emd_pull_'+Date.now());
-    const arr = Array.isArray(remote) ? remote : null;
-    if(arr && arr.length > 0){
-      tenders = arr;
-      save(); render();
-      localStorage.setItem('emd_last_sync', Date.now().toString());
-      setSyncDot('ok'); toast('Pulled from cloud ✓');
+  html += '<div style="display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">'+
+    (connected?'<button id="es-disc" class="btn-c" style="margin-right:auto;color:var(--red);border-color:rgba(224,90,78,.3)">Disconnect</button>':'')+
+    '<button class="btn-c" onclick="closeM(\'modal-sync\')">Cancel</button>'+
+    '<button class="btn-s" id="es-connect">'+(connected?'Save Token':'Connect')+'</button>'+
+  '</div>';
+
+  body.innerHTML = html;
+
+  function wire(id, fn){ const el=document.getElementById(id); if(el) el.addEventListener('click',fn); }
+
+  wire('es-push', function(){ closeM('modal-sync'); syncPush(); });
+  wire('es-pull', function(){ closeM('modal-sync'); syncPull(); });
+
+  wire('es-connect', function(){
+    const inp = document.getElementById('es-token');
+    if(!inp) return;
+    const token = inp.value.trim();
+    if(!token){ toast('Enter your GitHub token', true); return; }
+    if(!token.startsWith('ghp_')&&!token.startsWith('github_pat_')){ toast('Token should start with ghp_ or github_pat_', true); return; }
+    const old = getSyncCfg();
+    const newCfg = {token:token, gistId: token===old.token?(old.gistId||''):''};
+    saveSyncCfg(newCfg);
+    setSyncDot('ok'); closeM('modal-sync'); toast('Token saved ✓');
+    if(!newCfg.gistId) syncPush(); else syncPull();
+  });
+
+  wire('es-migrate', function(){
+    const urlEl=document.getElementById('es-old-url');
+    const statusEl=document.getElementById('es-mig-status');
+    if(!urlEl||!statusEl) return;
+    const url=urlEl.value.trim();
+    if(!url||!url.includes('script.google.com')){ statusEl.style.color='var(--red)'; statusEl.textContent='Enter a valid Apps Script URL'; return; }
+    statusEl.style.color='var(--dim)'; statusEl.textContent='⏳ Pulling…';
+    migrateEMDFromSheets(url, statusEl);
+  });
+
+  wire('es-disc', function(){
+    const btn=document.getElementById('es-disc'); if(!btn) return;
+    if(btn.dataset.armed==='1'){
+      saveSyncCfg({}); localStorage.removeItem('emd_last_sync');
+      setSyncDot(''); closeM('modal-sync'); toast('Sync disconnected');
     } else {
-      setSyncDot('ok'); toast('Nothing to pull');
+      btn.dataset.armed='1'; btn.textContent='Tap again to confirm';
+      setTimeout(function(){ if(btn){btn.dataset.armed='0';btn.textContent='Disconnect';} },2500);
     }
-  } catch(e){
-    setSyncDot('err'); toast('Pull failed — check URL', true);
-    console.warn('EMD sync pull error:', e);
-  }
+  });
+
+  openM('modal-sync');
 }
 
 // ── EXPORT TO EXCEL ───────────────────────────────────
@@ -928,7 +946,8 @@ function exportExcel(){
 
 // ── INIT ──────────────────────────────────────────────
 load();
-if(syncUrl){ setSyncDot('ok'); syncPull(); }
+const _emdCfg = getSyncCfg();
+if(_emdCfg.token && _emdCfg.gistId){ setSyncDot('ok'); syncPull(); }
 </script>
 </body>
 </html>
